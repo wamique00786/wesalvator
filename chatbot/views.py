@@ -4,6 +4,16 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from .models import ChatMessage
 import random
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import authentication_classes, permission_classes
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from rest_framework import status
+from .models import ChatMessage
+# from .utils import generate_bot_response  # Your chatbot logic
+
 
 def generate_bot_response(message):
     # Convert message to lowercase for easier matching
@@ -176,3 +186,46 @@ def get_bot_response(request):
     except Exception as e:
         print(f"Error processing message: {str(e)}")  # For debugging
         return JsonResponse({'error': 'Internal server error'}, status=500)
+
+
+####  api for chatbot 
+
+@method_decorator(csrf_exempt, name='dispatch')  # Disable CSRF for API requests
+@authentication_classes([])  # Allow unauthenticated users (optional)
+@permission_classes([])  # Allow public access (optional)
+class ChatbotAPIView(APIView):
+    """
+    API endpoint for chatbot responses.
+    """
+    permission_classes = [IsAuthenticated]  # Require authentication
+    def get(self,request):
+        return Response({'response': 'Hi i am chatbot for wesalvator'}, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        try:
+            if request.content_type != 'application/json':
+                return Response({'error': 'Invalid content type. Use application/json'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            user_message = request.data.get('message', '').strip()  # Get JSON message
+            if not user_message:
+                return Response({'error': 'No message provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate bot response
+            bot_response = generate_bot_response(user_message)
+
+            # Handle both authenticated and anonymous users
+            user = request.user if request.user.is_authenticated else None
+
+            # Save chat history in database
+            ChatMessage.objects.create(
+                user=user,
+                user_message=user_message,
+                bot_response=bot_response
+            )
+
+            return Response({'response': bot_response}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error processing message: {str(e)}")  # Debugging
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

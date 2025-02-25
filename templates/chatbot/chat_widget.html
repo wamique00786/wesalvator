@@ -1,7 +1,7 @@
 {% if user.is_authenticated %}
 <div id="chat-widget" class="chat-widget collapsed">
     <div class="chat-header" onclick="toggleChat()">
-        <span class="header-text"><i class="fas fa-comments"></i> Support Chat</span>
+        <span class="header-text" id="chatbot-header" ><i class="fas fa-comments"></i> <span id="chatbot-text">Support Chat</span></span>
         <button class="minimize-btn">
             <i class="fas fa-minus" id="toggle-icon"></i>
         </button>
@@ -112,6 +112,7 @@
         display: flex;
         flex-direction: column;
         background: #f8f9fa;
+        margin-top: 80px; 
     }
 
     #chat-container {
@@ -162,6 +163,12 @@
         border-radius: 20px;
         font-size: 15px;
         line-height: 1.4;
+    }
+    #chatbot-header{
+        display: block ;
+    }
+    #chatbot-text{
+        display: none;
     }
 }
 

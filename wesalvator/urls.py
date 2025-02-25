@@ -11,7 +11,7 @@ urlpatterns = [
     path('adoption/', include('adoption.urls')),
     path('subscription/', include('subscription.urls')),
     path('base/', include('base.urls')),
-    path('chatbot/', include('chatbot.urls')),
+    path('', include('chatbot.urls')),
     path('', include('rescue.urls')),
     # Authentication URLs
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
