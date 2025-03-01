@@ -322,8 +322,6 @@ async function sendReportToAdmin() {
         alert('Failed to send report to admin.');
     }
 }
-// document.cookie = "user_latitude=25.5940947; path=/";
-// document.cookie = "user_longitude=85.1375645; path=/";
 
 // Function to submit the report
 async function submitReport() {
@@ -340,13 +338,6 @@ async function submitReport() {
         return;
     }
 
-    const latitude = getCookie('user_latitude');
-    const longitude = getCookie('user_longitude');
-
-    if (!latitude || !longitude) {
-        alert('Location is not available. Please enable location services.');
-        return;
-    }
 
     try {
         // Convert base64 to Blob
@@ -404,7 +395,7 @@ async function submitReport() {
 // Add event listener to the report form submission
 document.getElementById('reportAnimalForm').addEventListener('submit', (event) => {
     event.preventDefault(); // Prevent default form submission
-    submitReport(); // Call the submitReport function
+    submitReport(); // Call the submitReport function   
 });
 
 // Initialize map when page loads

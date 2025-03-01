@@ -121,7 +121,9 @@ class AnimalReportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AnimalReport
-        fields = ['photo', 'description', 'priority', 'latitude', 'longitude']
+        # fields = ['photo', 'description', 'priority', 'latitude', 'longitude']
+        exclude= ('location',)
+        
 
     def validate(self, data):
         request = self.context.get('request')
