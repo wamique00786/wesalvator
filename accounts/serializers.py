@@ -115,6 +115,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         return value
     
 class AnimalReportSerializer(serializers.ModelSerializer):
+    
     priority = serializers.ChoiceField(choices=['LOW', 'MEDIUM', 'HIGH'], default='MEDIUM')
     latitude = serializers.FloatField(write_only=True, required=True)
     longitude = serializers.FloatField(write_only=True, required=True)
@@ -157,3 +158,11 @@ class AnimalReportSerializer(serializers.ModelSerializer):
 
         return super().create(validated_data)
 
+
+class AnimalReportListSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)  # Get username instead of ID
+    assigned_to = serializers.CharField(source='assigned_to.username', read_only=True)  # Get assigned_to 
+
+    class Meta:
+        model = AnimalReport
+        exclude = ('location', 'status')  # Removed the empty string in exclude

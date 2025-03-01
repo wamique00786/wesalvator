@@ -14,5 +14,6 @@ urlpatterns = [
     path('api/accounts/login/', LoginView.as_view(), name='login_api'),
     path('api/accounts/password_reset/', PasswordResetRequestView.as_view(), name='password_reset_api'),
     path('api/accounts/user/', views.UserReportView.as_view(), name='user_report'),
+    path('api/accounts/animal_reports/', views.AnimalReportListView.as_view()),
     path('volunteers/nearby/', views.NearbyVolunteersView.as_view(), name='nearby_volunteers'),
 ]

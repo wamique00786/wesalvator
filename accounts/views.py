@@ -21,7 +21,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .serializers import SignUpSerializer, LoginSerializer, PasswordResetRequestSerializer, UserProfileSerializer, AnimalReportSerializer
+from .serializers import SignUpSerializer, LoginSerializer, PasswordResetRequestSerializer, UserProfileSerializer, AnimalReportSerializer, AnimalReportListSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +189,12 @@ class UserReportView(generics.CreateAPIView):
             }
         }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
+class AnimalReportListView(generics.ListAPIView):
+    queryset = AnimalReport.objects.all().order_by('-timestamp')  # Get reports in descending order
+    serializer_class = AnimalReportListSerializer
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access
+
+
 class PasswordResetRequestView(generics.GenericAPIView):
     serializer_class = PasswordResetRequestSerializer
     permission_classes = [AllowAny]  # Allow any user to access this view
