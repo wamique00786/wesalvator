@@ -38,7 +38,7 @@ pipeline {
             }
         }
         
-        stage('sonareque analysis') {
+        stage('SonarQube Analysis') {
             steps {
                 script {
                     withSonarQubeEnv('sonar-server') {
@@ -46,6 +46,8 @@ pipeline {
                             ${SCANNER_HOME}/bin/sonar-scanner \
                             -Dsonar.projectName=wesalvator \
                             -Dsonar.projectKey=wesalvator \
+                            -Dsonar.qualitygate.wait=true \
+                            | tee sonar-report.txt  # NEW CODE: Save output to file
                         '''
                     }
                 }
@@ -67,11 +69,13 @@ pipeline {
                 }
             }
         }
+
         stage('Trivy Scan Docker') {
             steps {
                 script {
                     echo "Running Trivy scan..."
-                    sh "trivy image ${DOCKER_IMAGE}:latest"
+                    sh "trivy image ${DOCKER_IMAGE}:latest -f json -o trivy-report.json"
+                     
                 }
             }       
         }
@@ -96,9 +100,28 @@ pipeline {
                 }
             }
         }
-        
-        
 
+        stage('Send Trivy and SonarQube Reports to Slack') {  // NEW STAGE
+            steps {
+                script {
+                    echo "Sending Trivy scan and SonarQube report to Slack..."
+
+                    def trivyReport = readFile('trivy-report.txt').take(4000)  // Slack has a 4000-char limit
+                    def sonarReport = readFile('sonar-report.txt').take(4000)
+
+                    slackSend(
+                        channel: '#bugs-and-errors',
+                        message: "🔍 *Trivy Security Scan Report*:\n```${trivyReport}```"
+                    )
+
+                    slackSend(
+                        channel: '#bugs-and-errors',
+                        message: "🛠 *SonarQube Bug Report*:\n```${sonarReport}```"
+                    )
+                }
+            }
+        }
+        
         stage('UAT Deployment') {
             steps {
                 script {
@@ -172,43 +195,6 @@ pipeline {
                     """,
                     mimeType: "text/html",
                     to: "${EMAIL_RECIPIENT}"
-                )
-                
-                // Slack Notification on success
-                slackSend(
-                    channel:  '#bugs-and-errors',  // Adjusted to your specific channel
-                    message: "✅ Jenkins Pipeline: Deployment Successful! 🚀 Repository: ${REPO_URL}"
-                )
-            }
-        }
-
-        failure {
-            script {
-                def failedStage = currentBuild.rawBuild.getLog(50).find { it.contains("failed") }
-                def logOutput = currentBuild.rawBuild.getLog(50).join("\n")
-                echo "Pipeline failed at stage: ${failedStage}"
-                echo "Error logs:\n${logOutput}"
-
-                emailext(
-                    subject: "Jenkins Pipeline: Deployment Failed ❌",
-                    body: """
-                    <h2>❌ Pipeline Failed</h2>
-                    <p><b>Failed Stage:</b> ${failedStage}</p>
-                    <p><b>Error Logs:</b></p>
-                    <pre>${logOutput}</pre>
-                    <br>
-                    <p>Please check the Jenkins logs for more details.</p>
-                    <p>Regards,</p>
-                    <p>Jenkins CI/CD</p>
-                    """,
-                    mimeType: "text/html",
-                    to: "${EMAIL_RECIPIENT}"
-                )
-
-                // Slack Notification on failure
-                slackSend(
-                    channel: '#bugs-and-errors',  // Adjusted to your specific channel
-                    message: "❌ Jenkins Pipeline: Deployment Failed! 🚨 Failed Stage: ${failedStage}"
                 )
             }
         }
