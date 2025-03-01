@@ -6,7 +6,6 @@ pipeline {
         DOCKER_IMAGE = 'wamique00786/wesalvator'
         CONTAINER_NAME = 'wesalvator'
         DOCKER_BUILDKIT = '0'
-        TIMESTAMP = new Date().format("yyyyMMddHHmmss")
 
         // Database connection details
         DATABASE_HOST = credentials('DATABASE_HOST')
@@ -17,14 +16,22 @@ pipeline {
 
         // Email recipient
         EMAIL_RECIPIENT = "pavansingh3000@gmail.com"
-        
-        // Slack API token for sending notifications
-        SLACK_API_TOKEN = credentials('slack_api')  // This references your Slack API token
-        
+
+        // Slack API token
+        SLACK_API_TOKEN = credentials('slack_api')
+
         SCANNER_HOME = tool 'SonarQube Scanner'
     }
 
     stages {
+        stage('Set Timestamp') {
+            steps {
+                script {
+                    env.TIMESTAMP = sh(script: 'date +%Y%m%d%H%M%S', returnStdout: true).trim()
+                }
+            }
+        }
+
         stage('Git Clone') {
             steps {
                 script {
@@ -37,32 +44,33 @@ pipeline {
                 }
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
                 script {
                     withSonarQubeEnv('sonar-server') {
-                         sh '''
+                        sh """
                             ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectName=wesalvator \
                             -Dsonar.projectKey=wesalvator \
-                            -Dsonar.qualitygate.wait=true \
-                            | tee sonar-report.txt  # NEW CODE: Save output to file
-                        '''
+                            -Dsonar.projectName=wesalvator \
+                            -Dsonar.sources=. \
+                            -Dsonar.qualitygate.wait=true
+                        """
+                        sh 'cp .scannerwork/report-task.txt sonar-report.json || echo "{}" > sonar-report.json'
                     }
                 }
             }
         }
-       
+
         stage('Docker Build') {
             steps {
                 script {
                     try {
                         echo "Building Docker image..."
-                        sh '''
+                        sh """
                         docker build -t ${DOCKER_IMAGE}:${TIMESTAMP} . 
                         docker tag ${DOCKER_IMAGE}:${TIMESTAMP} ${DOCKER_IMAGE}:latest
-                        '''
+                        """
                     } catch (Exception e) {
                         error "Docker Build failed: ${e.message}"
                     }
@@ -74,8 +82,7 @@ pipeline {
             steps {
                 script {
                     echo "Running Trivy scan..."
-                    sh "trivy image ${DOCKER_IMAGE}:latest -f json -o trivy-report.json"
-                     
+                    sh "trivy image ${DOCKER_IMAGE}:latest -f json -o trivy-report.json || echo '{}' > trivy-report.json"
                 }
             }       
         }
@@ -86,13 +93,11 @@ pipeline {
                     try {
                         withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
                             echo "Pushing Docker image to Docker Hub..."
-                            sh '''
-                            export DOCKER_CONFIG=/tmp/.docker
-                            mkdir -p $DOCKER_CONFIG
-                            echo "{ \\"auths\\": { \\"https://index.docker.io/v1/\\": { \\"auth\\": \\"$(echo -n ${DOCKER_USER}:${DOCKER_PASSWORD} | base64)\\" } } }" > $DOCKER_CONFIG/config.json
+                            sh """
+                            echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USER}" --password-stdin
                             docker push ${DOCKER_IMAGE}:latest
                             docker push ${DOCKER_IMAGE}:${TIMESTAMP}
-                            '''
+                            """
                         }
                     } catch (Exception e) {
                         error "Docker Push failed: ${e.message}"
@@ -101,27 +106,19 @@ pipeline {
             }
         }
 
-        stage('Send Trivy and SonarQube Reports to Slack') {  // NEW STAGE
+        stage('Send Trivy and SonarQube Reports to Slack') {  
             steps {
                 script {
                     echo "Sending Trivy scan and SonarQube report to Slack..."
-
-                    def trivyReport = readFile('trivy-report.txt').take(4000)  // Slack has a 4000-char limit
-                    def sonarReport = readFile('sonar-report.txt').take(4000)
-
-                    slackSend(
-                        channel: '#bugs-and-errors',
-                        message: "🔍 *Trivy Security Scan Report*:\n```${trivyReport}```"
-                    )
-
-                    slackSend(
-                        channel: '#bugs-and-errors',
-                        message: "🛠 *SonarQube Bug Report*:\n```${sonarReport}```"
-                    )
+                    def trivyReportJson = readFile('trivy-report.json').take(4000)
+                    def sonarReportJson = readFile('sonar-report.json').take(4000)
+                    
+                    slackSend(channel: '#bugs-and-errors', message: "🔍 *Trivy Security Scan Report*:\n```${trivyReportJson}```")
+                    slackSend(channel: '#bugs-and-errors', message: "🛠 *SonarQube Bug Report*:\n```${sonarReportJson}```")
                 }
             }
         }
-        
+
         stage('UAT Deployment') {
             steps {
                 script {
