@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wesalvatore/provider/themeprovider.dart';
-import 'package:wesalvatore/provider/user_provider.dart';
+import 'package:wesalvator/provider/themeprovider.dart';
+import 'package:wesalvator/provider/user_provider.dart';
 import 'package:image_picker/image_picker.dart'; // You'll need to add this package
 import 'dart:io';
 
@@ -16,8 +16,10 @@ class SettingsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Settings",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Settings",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 2,
       ),
@@ -46,7 +48,10 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildDarkModeToggle(
-      BuildContext context, bool isDarkMode, ThemeProvider themeProvider) {
+    BuildContext context,
+    bool isDarkMode,
+    ThemeProvider themeProvider,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -55,14 +60,17 @@ class SettingsPage extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Dark Mode",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            const Text(
+              "Dark Mode",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             Switch(
               value: isDarkMode,
               activeColor: Colors.teal,
               onChanged: (value) {
-                themeProvider
-                    .setTheme(value ? ThemeMode.dark : ThemeMode.light);
+                themeProvider.setTheme(
+                  value ? ThemeMode.dark : ThemeMode.light,
+                );
               },
             ),
           ],
@@ -72,7 +80,9 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildProfileImageOption(
-      BuildContext context, UserProvider userProvider) {
+    BuildContext context,
+    UserProvider userProvider,
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -89,8 +99,9 @@ class SettingsPage extends StatelessWidget {
                 ),
                 CircleAvatar(
                   radius: 25,
-                  backgroundImage:
-                      _getProfileImage(userProvider.profileImagePath),
+                  backgroundImage: _getProfileImage(
+                    userProvider.profileImagePath,
+                  ),
                 ),
               ],
             ),
@@ -111,7 +122,7 @@ class SettingsPage extends StatelessWidget {
                   () => _pickImage(ImageSource.camera, userProvider),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -119,7 +130,11 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildImageButton(
-      BuildContext context, String label, IconData icon, VoidCallback onTap) {
+    BuildContext context,
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Column(

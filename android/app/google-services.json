@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "879621879982",
-    "project_id": "wesalvator-61c97",
-    "storage_bucket": "wesalvator-61c97.firebasestorage.app"
+    "project_number": "903848444577",
+    "project_id": "wesalvator-ce927",
+    "storage_bucket": "wesalvator-ce927.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:879621879982:android:1c8cdbd0830c98cdfc553f",
+        "mobilesdk_app_id": "1:903848444577:android:877eb4d797e158893ae6e0",
         "android_client_info": {
           "package_name": "com.example.wesalvator"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "903848444577-m0vj2a3l97nk56upibsk18bp64f8qaar.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAY5xeghUCpJLT7WVkAKZbBWYYD5we_ffg"
+          "current_key": "AIzaSyDEDjMuIeLmlOxCEF1utsADb0K2ip2E8Gw"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "903848444577-m0vj2a3l97nk56upibsk18bp64f8qaar.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "903848444577-5sikn76l5s3eguire77970oi83utrqkc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.wesalvator"
+              }
+            }
+          ]
         }
       }
     }

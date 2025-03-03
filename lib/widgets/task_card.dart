@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:wesalvatore/Volunteer/task_details%20pages.dart';
+import 'package:wesalvator/Volunteer/task_details%20pages.dart';
 
 class TaskCard extends StatefulWidget {
   final String title;
   final String description;
 
-  const TaskCard({
-    super.key,
-    required this.title,
-    required this.description,
-  });
+  const TaskCard({super.key, required this.title, required this.description});
 
   @override
   _TaskCardState createState() => _TaskCardState();
@@ -31,9 +27,10 @@ class _TaskCardState extends State<TaskCard> {
             Text(
               widget.title,
               style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueGrey,
+              ),
             ),
             SizedBox(height: 10),
 
@@ -53,15 +50,13 @@ class _TaskCardState extends State<TaskCard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => (TaskDetailsPages())),
+                        builder: (context) => (TaskDetailsPages()),
+                      ),
                     );
                   },
                   child: Text("view details"),
                 ),
-                ElevatedButton(
-                  onPressed: () {},
-                  child: Text("completed"),
-                ),
+                ElevatedButton(onPressed: () {}, child: Text("completed")),
               ],
             ),
           ],

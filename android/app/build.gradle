@@ -12,12 +12,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.example.wesalvator"  // Change if your package name is different
+    namespace "com.example.wesalvator" 
     compileSdk 35
-    ndkVersion "26.3.11579264"
 
     defaultConfig {
-        applicationId "com.example.wesalvator"  // Ensure this matches your package name
+       applicationId "com.example.wesalvator" 
         minSdk 23
         targetSdk 34
         versionCode 1
@@ -50,6 +49,11 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
     }
 }
 
@@ -57,10 +61,17 @@ flutter {
     source "../.."
 }
 
-
 dependencies {
     implementation 'androidx.annotation:annotation:1.7.0'
+
+    // Firebase Dependencies (Using BOM for version management)
     implementation platform('com.google.firebase:firebase-bom:33.8.0')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'       // Firebase Authentication
+    implementation 'com.google.firebase:firebase-firestore'   // Firestore Database
+    implementation 'com.google.firebase:firebase-messaging'   // Push Notifications (FCM)
+    implementation 'com.google.firebase:firebase-storage'     // Cloud Storage
+
+    // Android Desugaring Library (if needed)
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 }

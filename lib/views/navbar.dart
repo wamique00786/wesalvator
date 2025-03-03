@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import '../auth pages/login_screen.dart';
-import 'package:wesalvatore/provider/user_provider.dart';
-import 'package:wesalvatore/views/career_page.dart';
-import 'package:wesalvatore/views/contact_us_page.dart';
-import 'package:wesalvatore/views/organization_page.dart';
-import 'package:wesalvatore/views/premium_page.dart';
-import 'package:wesalvatore/views/donation_page.dart';
-import 'package:wesalvatore/views/adoption_page.dart';
-import 'package:wesalvatore/views/setting_screen.dart';
-import 'package:wesalvatore/views/team_page.dart';
+import 'package:wesalvator/provider/user_provider.dart';
+import 'package:wesalvator/views/career_page.dart';
+import 'package:wesalvator/views/contact_us_page.dart';
+import 'package:wesalvator/views/organization_page.dart';
+import 'package:wesalvator/views/premium_page.dart';
+import 'package:wesalvator/views/donation_page.dart';
+import 'package:wesalvator/views/adoption_page.dart';
+import 'package:wesalvator/views/setting_screen.dart';
+import 'package:wesalvator/views/team_page.dart';
 
 class NavBar extends StatelessWidget {
   final padding = const EdgeInsets.symmetric(horizontal: 20);

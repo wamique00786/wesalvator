@@ -5,12 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
-import 'package:wesalvatore/Admin/admin_dashboard.dart';
-import 'package:wesalvatore/Volunteer/volunteer_dashboard.dart';
-import 'package:wesalvatore/auth%20pages/forgot_password_screen.dart';
-import 'package:wesalvatore/auth%20pages/signup_screen.dart';
-import 'package:wesalvatore/provider/user_provider.dart';
-import 'package:wesalvatore/user/user_dashboard_screen.dart';
+import 'package:wesalvator/Admin/admin_dashboard.dart';
+import 'package:wesalvator/Volunteer/volunteer_dashboard.dart';
+import 'package:wesalvator/auth%20pages/forgot_password_screen.dart';
+import 'package:wesalvator/auth%20pages/signup_screen.dart';
+import 'package:wesalvator/provider/user_provider.dart';
+import 'package:wesalvator/user/user_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,11 +44,11 @@ class _LoginScreenState extends State<LoginScreen> {
     String? token = await _secureStorage.read(key: "TOKEN");
     String? userType = await _secureStorage.read(key: "USER_TYPE");
 
-    if (token != null && userType != null) {
+    if (userType != null) {
       Provider.of<UserProvider>(context, listen: false).setUser(
         await _secureStorage.read(key: "USERNAME") ?? "",
         userType,
-        token,
+        token!,
       );
 
       _navigateToDashboard(userType);

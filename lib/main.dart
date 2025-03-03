@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
-import 'package:wesalvatore/provider/themeprovider.dart';
-import 'package:wesalvatore/provider/user_provider.dart';
-import 'package:wesalvatore/splash_screen.dart';
+import 'package:wesalvator/provider/themeprovider.dart';
+import 'package:wesalvator/provider/themeprovider.dart';
+import 'package:wesalvator/provider/user_provider.dart';
+import 'package:wesalvator/splash_screen.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 

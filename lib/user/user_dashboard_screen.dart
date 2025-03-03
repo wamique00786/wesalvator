@@ -8,9 +8,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mime/mime.dart';
 import 'package:provider/provider.dart';
-import 'package:wesalvatore/provider/user_provider.dart';
-import 'package:wesalvatore/services/compressImage.dart';
-import 'package:wesalvatore/views/navbar.dart';
+import 'package:wesalvator/provider/user_provider.dart';
+import 'package:wesalvator/services/chatbot.dart';
+import 'package:wesalvator/services/compressImage.dart';
+import 'package:wesalvator/views/navbar.dart';
 
 class UserDashBoardScreen extends StatefulWidget {
   const UserDashBoardScreen({super.key});
@@ -217,15 +218,21 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildCameraSection(),
-              const SizedBox(height: 20),
-              if (_capturedImages.isNotEmpty) ...[
-                _buildImagePreviewList(),
-                const SizedBox(height: 24),
-              ],
-              _buildReportForm(),
+              Column(
+                children: [
+                  _buildCameraSection(),
+                  const SizedBox(height: 20),
+                  if (_capturedImages.isNotEmpty) ...[
+                    _buildImagePreviewList(),
+                    const SizedBox(height: 24),
+                  ],
+                  _buildReportForm(),
+                ],
+              ),
+              _buildchatbot(),
             ],
           ),
         ),
@@ -241,10 +248,12 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               'Take Photos',
               style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             GestureDetector(
@@ -280,6 +289,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurface.withOpacity(0.7),
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -475,6 +485,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
           controller: _descriptionController,
           decoration: const InputDecoration(
             hintText: 'Describe the situation...',
+            border: OutlineInputBorder(),
           ),
           maxLines: 4,
           textCapitalization: TextCapitalization.sentences,
@@ -505,6 +516,16 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
       ),
+    );
+  }
+
+  Widget _buildchatbot() {
+    return FloatingActionButton.small(
+      onPressed: () {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => Chatbot()));
+      },
+      child: const Icon(Icons.live_help),
     );
   }
 }

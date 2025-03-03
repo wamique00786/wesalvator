@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:wesalvatore/widgets/task_card.dart';
+import 'package:wesalvator/widgets/task_card.dart';
 
 class VolunteerDashboard extends StatefulWidget {
   const VolunteerDashboard({super.key});
@@ -18,8 +18,10 @@ class VolunteerDashboardState extends State<VolunteerDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Volunteer Dashboard',
-            style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Volunteer Dashboard',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.blueGrey[900],
       ),
       body: Padding(

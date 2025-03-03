@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:wesalvatore/Admin/recent_animals.dart';
-import 'package:wesalvatore/Admin/active_volunteer.dart';
-import 'package:wesalvatore/views/navbar.dart';
+import 'package:wesalvator/Admin/recent_animals.dart';
+import 'package:wesalvator/Admin/active_volunteer.dart';
+import 'package:wesalvator/views/navbar.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});

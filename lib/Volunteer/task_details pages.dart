@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:wesalvatore/Volunteer/map_page.dart';
+import 'package:wesalvator/Volunteer/map_page.dart';
 
 class TaskDetailsPages extends StatefulWidget {
   const TaskDetailsPages({super.key});
@@ -27,9 +27,9 @@ class _TaskDetailsPagesState extends State<TaskDetailsPages> {
         startingLocation = newLocation;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error getting location: $e'),
-      ));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
 
@@ -49,21 +49,16 @@ class _TaskDetailsPagesState extends State<TaskDetailsPages> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Text(
-            "Feed the cat ",
-            style: TextStyle(fontSize: 24),
-          ),
+          Text("Feed the cat ", style: TextStyle(fontSize: 24)),
           Text("Details about the task  "),
           startingLocation == null
               ? const Center(child: CircularProgressIndicator())
               : Container(
-                  height: 400,
-                  width: 400,
-                  padding: EdgeInsets.all(8),
-                  child: GeolocTrackingWidget(
-                    destination: destination,
-                  ),
-                ),
+                height: 400,
+                width: 400,
+                padding: EdgeInsets.all(8),
+                child: GeolocTrackingWidget(destination: destination),
+              ),
         ],
       ),
     );
