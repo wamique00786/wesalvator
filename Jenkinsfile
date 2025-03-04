@@ -142,7 +142,7 @@ pipeline {
                               -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
                               -e GDAL_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/libgdal.so \
                               -v static_volume:/app/staticfiles \
-                              -v media_volume:/usr/share/nginx/html/media \
+                              -v media_volume:/app/media \
                               ${DOCKER_IMAGE}:latest
                             docker system prune -a -f
                             '''
