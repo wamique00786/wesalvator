@@ -21,7 +21,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .serializers import SignUpSerializer, LoginSerializer, PasswordResetRequestSerializer, UserProfileSerializer, AnimalReportSerializer
+from .serializers import SignUpSerializer, LoginSerializer, PasswordResetRequestSerializer, UserProfileSerializer, AnimalReportSerializer, AnimalReportListSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +274,11 @@ class SignUpView(generics.CreateAPIView):
                 "message": "User created successfully."
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AnimalReportListView(generics.ListAPIView):
+    queryset = AnimalReport.objects.all().order_by('-timestamp')  # Get reports in descending order
+    serializer_class = AnimalReportListSerializer
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access
 
 def signup(request):
     if request.method == 'POST':
