@@ -111,6 +111,7 @@ function initMap() {
     setInterval(() => {
         if (userMarker) {
             updateUserInfo(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
+            fetchNearbyVolunteers(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
         }
     }, 10000); // Update every 10 seconds
 }
@@ -262,7 +263,7 @@ async function fetchNearbyVolunteers(latitude, longitude) {
         }
 
         const response = await fetch(
-            `/api/volunteers/nearby/?lat=${latitude}&lng=${longitude}`,
+            `/volunteers/nearby/?lat=${latitude}&lng=${longitude}`,
             {
                 method: 'GET',
                 headers: {

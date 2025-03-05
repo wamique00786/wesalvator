@@ -72,11 +72,9 @@ class UserReportView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
-            # Log the incoming request data for debugging
             logger.info(f"Received data: {request.data}")
             logger.info(f"Files: {request.FILES}")
 
-            # Validate incoming data
             if 'photo' not in request.FILES:
                 return Response({'status': 'error', 'message': 'Photo is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -86,20 +84,13 @@ class UserReportView(generics.CreateAPIView):
             if not request.data.get('latitude') or not request.data.get('longitude'):
                 return Response({'status': 'error', 'message': 'Location coordinates are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate priority (default to MEDIUM)
-            priority = request.data.get('priority', None)
-
-            if priority is None or priority.strip() == "":
-                priority = "MEDIUM"
-            else:
-                priority = priority.strip().upper()
-
+            priority = request.data.get('priority', 'MEDIUM').strip().upper()
             if priority not in ['LOW', 'MEDIUM', 'HIGH']:
                 return Response({'status': 'error', 'message': 'Invalid priority. Choose from LOW, MEDIUM, HIGH'}, status=status.HTTP_400_BAD_REQUEST)
 
-            logger.info(f"Final Priority assigned: {priority}")  # Debugging log
+            logger.info(f"Final Priority assigned: {priority}")
 
-            # Create report object
+            # Create report object with proper location assignment
             report = AnimalReport.objects.create(
                 user=request.user,
                 photo=request.FILES['photo'],
@@ -108,25 +99,28 @@ class UserReportView(generics.CreateAPIView):
                 status='PENDING',
                 priority=priority
             )
+            
+            # Ensure the report location has the correct SRID
+            if report.location.srid != 4326:
+                report.location.transform(4326)
 
-            # Find nearest volunteer within 10km
+            # Find the nearest volunteer within 10km (10,000 meters)
             nearest_volunteer = UserProfile.objects.filter(
                 user_type='VOLUNTEER',
-                location__isnull=False,
-                location__distance_lte=(report.location, D(km=10))
+                location__isnull=False  # Ensure they have a location
             ).annotate(
-                distance=Distance('location', report.location)
+                distance=Distance('location', report.location)  # Calculate distance
+            ).filter(
+                distance__lte=D(m=10000)  # Use meters instead of km
             ).order_by('distance').first()
 
+            
             if nearest_volunteer:
-                # Assign to nearest volunteer
                 report.assigned_to = nearest_volunteer.user
                 report.status = 'ASSIGNED'
                 report.save()
-                
-                # Send notification to volunteer
-                send_notification_to_volunteer(nearest_volunteer, report)
-                
+                send_notification_to_volunteer(nearest_volunteer, report, request.data['longitude'], float(request.data['latitude']))
+
                 return Response({
                     'status': 'success',
                     'message': 'Report submitted and assigned to a volunteer.',
@@ -137,14 +131,12 @@ class UserReportView(generics.CreateAPIView):
                     'priority': report.priority
                 }, status=status.HTTP_201_CREATED)
             
-            # If no volunteer found, assign to admin
             admin_profile = UserProfile.objects.filter(user_type='ADMIN').first()
             if admin_profile:
                 report.assigned_to = admin_profile.user
                 report.status = 'ADMIN_REVIEW'
                 report.save()
 
-                # Send notification to admin
                 send_mail(
                     subject="New Animal Report - No Volunteers Available",
                     message=f"""
