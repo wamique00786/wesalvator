@@ -112,7 +112,7 @@ function initMap() {
 }
 async function updateUserInfo(latitude, longitude) {
     try {
-        // console.log("Updating user location:", latitude, longitude); // Debugging log
+        console.log("Updating user location:", latitude, longitude); // Debugging log
 
         // Ensure latitude & longitude are valid
         if (latitude === undefined || longitude === undefined) {
@@ -165,7 +165,7 @@ async function updateUserInfo(latitude, longitude) {
                 <strong>User:</strong> ${userInfo.username}<br>
                 <strong>Phone:</strong> ${userInfo.phone}<br>
                 <strong>Location:</strong> ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
-                <strong>User Type:</strong> ${userInfo.user_type}
+            
             </div>
         `;
 
@@ -329,6 +329,9 @@ async function sendReportToAdmin() {
 async function submitReport() {
     const descriptionInput = document.getElementById('description');
     const photoDataInput = document.getElementById('photoData'); // This holds base64
+    const latitude = document.getElementById('latitude', ); 
+    const longitude = document.getElementById('longitude'); 
+
 
     if (!descriptionInput || !photoDataInput) {
         alert('Required input elements are missing.');
@@ -339,9 +342,10 @@ async function submitReport() {
         alert('Please fill in all fields and ensure an image is captured.');
         return;
     }
+    console.log(latitude, longitude, 'ok');
 
-    const latitude = getCookie('user_latitude');
-    const longitude = getCookie('user_longitude');
+    // const latitude = getCookie('user_latitude');
+    // const longitude = getCookie('user_longitude');
 
     if (!latitude || !longitude) {
         alert('Location is not available. Please enable location services.');
@@ -362,8 +366,8 @@ async function submitReport() {
         const formData = new FormData();
         formData.append('photo', file);
         formData.append('description', descriptionInput.value);
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
+        formData.append('latitude',parseFloat(latitude)); // Ensure it's a number
+        formData.append('longitude', parseFloat(longitude)); // Ensure it's a number
         formData.append('priority', document.getElementById('priority').value || 'MEDIUM');
 
         // Fetch CSRF Token
