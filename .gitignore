@@ -17,3 +17,4 @@ docs/
 *.pyc.env
 .env
 postgres/
+py_client/

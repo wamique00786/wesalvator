@@ -26,66 +26,53 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated #AllowAny  # Import AllowAny
 #from accounts.serializers import UserProfileSerializer
 from django.contrib.auth import get_user_model
-from .serializers import UserProfileSerializer
+from .serializers import UserProfileSerializer, UserLocationSerializer, UserLocationHistorySerializer
 
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
     
-@api_view(['POST'])
+
+@api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated])
 def save_user_location(request):
     try:
-        latitude = float(request.data.get('latitude'))
-        longitude = float(request.data.get('longitude'))
-        current_time = timezone.now()
+        user_profile = request.user.userprofile  # Get the user's profile
 
-        # Create Point object
-        location_point = Point(longitude, latitude, srid=4326)
-        
-        # Update user's current location
-        user_profile = request.user.userprofile
-        
-        # Only save if location has changed significantly (more than 10 meters)
-        should_save = False
-        if not user_profile.location:
-            should_save = True
-        elif user_profile.location.distance(location_point) > 0.01:  # 10 meters
-            should_save = True
-            
-        if should_save:
-            # Update current location
-            user_profile.location = location_point
-            user_profile.last_location_update = current_time
-            user_profile.save()
+        if request.method == 'GET':
+            # Fetch last 10 location history records for the user
+            location_history = UserLocationHistory.objects.filter(user=request.user).order_by('-timestamp')[:10]
+            history_serializer = UserLocationHistorySerializer(location_history, many=True)
 
-            # Save to location history
-            UserLocationHistory.objects.create(
-                user=request.user,
-                location=location_point,
-                timestamp=current_time,
-                user_type=user_profile.user_type
-            )
-            
-            # Clean up old location history (keep last 24 hours)
-            cleanup_time = current_time - timedelta(hours=24)
-            UserLocationHistory.objects.filter(
-                user=request.user,
-                timestamp__lt=cleanup_time
-            ).delete()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Location updated successfully',
-            'location_saved': should_save
-        })
+            return Response({
+                'latitude': user_profile.location.y if user_profile.location else None,
+                'longitude': user_profile.location.x if user_profile.location else None,
+                'last_update': user_profile.last_location_update,
+                'location_history': history_serializer.data  # Return last 10 location history records
+            })
+
+        # Handle POST request (Updating location)
+        serializer = UserLocationSerializer(user_profile, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response({'status': 'error', 'message': serializer.errors}, status=400)
+
+        serializer.save()  # Updates user location and history
+
+        # Clean up old location history (only keep last 24 hours)
+        cleanup_time = timezone.now() - timedelta(hours=24)
+        UserLocationHistory.objects.filter(
+            user=request.user,
+            timestamp__lt=cleanup_time
+        ).delete()
+
+        return Response({'status': 'success', 'message': 'Location updated successfully'})
+
     except Exception as e:
         logger.error(f"Error saving location: {str(e)}")
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
+        return Response({'status': 'error', 'message': str(e)}, status=400)
+
     
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_users_locations(request):
