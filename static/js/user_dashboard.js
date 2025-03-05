@@ -6,12 +6,16 @@ const startButton = document.getElementById('startCamera');
 const captureButton = document.getElementById('capturePhoto');
 const retakeButton = document.getElementById('retakePhoto');
 
-// to retrive cookies
+
 function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null; // Return null if the cookie does not exist
+    let cookies = document.cookie.split('; ');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookiePair = cookies[i].split('=');
+        if (cookiePair[0] === name) {
+            return cookiePair[1];
+        }
+    }
+    return null;
 }
 
 
@@ -196,6 +200,12 @@ function watchLocation() {
                 const longitude = position.coords.longitude;
                 console.log("Live location:", latitude, longitude); // Debugging
 
+                // Store in cookies
+                document.cookie = `latitude=${latitude}; path=/`;
+                document.cookie = `longitude=${longitude}; path=/`;
+
+                console.log("Latitude and Longitude stored in cookies.");
+
                 updateUserInfo(latitude, longitude);
             },
             function (error) {
@@ -322,15 +332,13 @@ async function sendReportToAdmin() {
         alert('Failed to send report to admin.');
     }
 }
-// document.cookie = "user_latitude=25.5940947; path=/";
-// document.cookie = "user_longitude=85.1375645; path=/";
 
 // Function to submit the report
 async function submitReport() {
     const descriptionInput = document.getElementById('description');
     const photoDataInput = document.getElementById('photoData'); // This holds base64
-    const latitude = document.getElementById('latitude', ); 
-    const longitude = document.getElementById('longitude'); 
+    // const latitude = document.getElementById('latitude'); 
+    // const longitude = document.getElementById('longitude'); 
 
 
     if (!descriptionInput || !photoDataInput) {
@@ -342,10 +350,9 @@ async function submitReport() {
         alert('Please fill in all fields and ensure an image is captured.');
         return;
     }
-    console.log(latitude, longitude, 'ok');
 
-    // const latitude = getCookie('user_latitude');
-    // const longitude = getCookie('user_longitude');
+    const latitude = getCookie('latitude');
+    const longitude = getCookie('longitude');
 
     if (!latitude || !longitude) {
         alert('Location is not available. Please enable location services.');
