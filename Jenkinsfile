@@ -38,19 +38,7 @@ pipeline {
             }
         }
         
-        stage('sonareque analysis') {
-            steps {
-                script {
-                    withSonarQubeEnv('sonar-server') {
-                         sh '''
-                            ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectName=wesalvator \
-                            -Dsonar.projectKey=wesalvator \
-                        '''
-                    }
-                }
-            }
-        }
+       
        
         stage('Docker Build') {
             steps {
