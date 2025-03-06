@@ -9,6 +9,9 @@ from ..serializers import (
     AnimalReportSerializer,
     AnimalReport2Serializer,
     AnimalReportListSerializer,
+    PasswordResetRequestSerializer,
+    LoginSerializer,
+    SignUpSerializer
 )
 from .. import send_email as sm
 import logging
@@ -253,3 +256,91 @@ class AnimalReportListView(generics.ListAPIView):
     )  # Get reports in descending order
     serializer_class = AnimalReportListSerializer
     permission_classes = [IsAuthenticated]
+
+#### Login/Signup View Class ###
+
+class PasswordResetRequestView(generics.GenericAPIView):
+    serializer_class = PasswordResetRequestSerializer
+    permission_classes = [AllowAny]  # Allow any user to access this view
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email=email)
+            subject = "Password Reset Requested"
+            email_template_name = "registration/password_reset_email.html"
+            context = {
+                "email": user.email,
+                "domain": request.get_host(),
+                "site_name": "Wesalvatore",
+                "uid": urlsafe_base64_encode(force_bytes(user.pk)),
+                "token": default_token_generator.make_token(user),
+                "protocol": "http",
+            }
+            email = render_to_string(email_template_name, context)
+            send_mail(subject, email, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+            return Response({"message": "A password reset link has been sent to your email."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+    permission_classes = [AllowAny]  # Allow any user to access this view
+
+    def get(self, request, *args, **kwargs):
+        return Response({
+            "message": "Please provide your username, password, and user type to log in."
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            user_type = serializer.validated_data['user_type']
+
+            # Authenticate user
+            user = authenticate(request, username=username, password=password)
+            if user is None:
+                return Response({
+                    "error": "Invalid username or password."
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Retrieve or create user profile
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            
+            if profile.user_type != user_type:
+                return Response({
+                    "error": f"This account is not registered as {user_type}."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Log in the user and generate a token
+            login(request, user)  # Optional: Only needed for session-based authentication
+            token, _ = Token.objects.get_or_create(user=user)
+
+            return Response({
+                "message": "Login successful.",
+                "user_type": profile.user_type,
+                "token": token.key  # Return the token
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SignUpView(generics.CreateAPIView):
+    serializer_class = SignUpSerializer
+    permission_classes = [AllowAny]  # Allow any user to access this view
+
+    def get(self, request, *args, **kwargs):
+        return Response({
+            "message": "Please provide the following fields to sign up: username, email, password, user_type, mobile_number."
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "user": serializer.data,
+                "message": "User created successfully."
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
