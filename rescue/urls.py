@@ -14,13 +14,13 @@ urlpatterns = [
     path('api/report-animal/', views.report_animal, name='report_animal'),
     path('api/volunteers/nearby/', views.nearby_volunteers, name='nearby_volunteers'),
     path('api/volunteer-locations/', views.volunteer_locations, name='volunteer_locations'),
-    path('api/save-location/', views.save_user_location, name='save_user_location'),
+    # path('api/save-location/', views.save_user_location, name='save_user_location'),
     path('rescued-animals-today/', views.rescued_animals_today, name='rescued_animals_today'),  # Add this line
     path('api/accounts/volunteers/nearby/', views.nearby_volunteers, name='nearby_volunteers'),
     path('api/volunteer/location/update/', views.update_volunteer_location, name='update_volunteer_location'),
     path('api/volunteers/locations/', views.get_volunteer_locations, name='get_volunteer_locations'),
     path('complete-task/<int:task_id>/', views.complete_task, name='complete_task'),
     path('api/all-users-locations/', views.get_all_users_locations, name='get_all_users_locations'),
-    path('api/save-location/', views.save_user_location, name='save_user_location'),
+    path('api/save-location/', views.save_user_location),
     path('api/user-info/', views.get_user_info, name='get_user_info'),
 ]

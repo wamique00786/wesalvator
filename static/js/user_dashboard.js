@@ -6,12 +6,16 @@ const startButton = document.getElementById('startCamera');
 const captureButton = document.getElementById('capturePhoto');
 const retakeButton = document.getElementById('retakePhoto');
 
-// to retrive cookies
+
 function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null; // Return null if the cookie does not exist
+    let cookies = document.cookie.split('; ');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookiePair = cookies[i].split('=');
+        if (cookiePair[0] === name) {
+            return cookiePair[1];
+        }
+    }
+    return null;
 }
 
 
@@ -112,7 +116,7 @@ function initMap() {
 }
 async function updateUserInfo(latitude, longitude) {
     try {
-        // console.log("Updating user location:", latitude, longitude); // Debugging log
+        console.log("Updating user location:", latitude, longitude); // Debugging log
 
         // Ensure latitude & longitude are valid
         if (latitude === undefined || longitude === undefined) {
@@ -165,7 +169,7 @@ async function updateUserInfo(latitude, longitude) {
                 <strong>User:</strong> ${userInfo.username}<br>
                 <strong>Phone:</strong> ${userInfo.phone}<br>
                 <strong>Location:</strong> ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
-                <strong>User Type:</strong> ${userInfo.user_type}
+            
             </div>
         `;
 
@@ -195,6 +199,12 @@ function watchLocation() {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
                 console.log("Live location:", latitude, longitude); // Debugging
+
+                // Store in cookies
+                document.cookie = `latitude=${latitude}; path=/`;
+                document.cookie = `longitude=${longitude}; path=/`;
+
+                console.log("Latitude and Longitude stored in cookies.");
 
                 updateUserInfo(latitude, longitude);
             },
@@ -322,13 +332,14 @@ async function sendReportToAdmin() {
         alert('Failed to send report to admin.');
     }
 }
-// document.cookie = "user_latitude=25.5940947; path=/";
-// document.cookie = "user_longitude=85.1375645; path=/";
 
 // Function to submit the report
 async function submitReport() {
     const descriptionInput = document.getElementById('description');
     const photoDataInput = document.getElementById('photoData'); // This holds base64
+    // const latitude = document.getElementById('latitude'); 
+    // const longitude = document.getElementById('longitude'); 
+
 
     if (!descriptionInput || !photoDataInput) {
         alert('Required input elements are missing.');
@@ -340,8 +351,8 @@ async function submitReport() {
         return;
     }
 
-    const latitude = getCookie('user_latitude');
-    const longitude = getCookie('user_longitude');
+    const latitude = getCookie('latitude');
+    const longitude = getCookie('longitude');
 
     if (!latitude || !longitude) {
         alert('Location is not available. Please enable location services.');
@@ -362,8 +373,8 @@ async function submitReport() {
         const formData = new FormData();
         formData.append('photo', file);
         formData.append('description', descriptionInput.value);
-        formData.append('latitude', latitude);
-        formData.append('longitude', longitude);
+        formData.append('latitude',parseFloat(latitude)); // Ensure it's a number
+        formData.append('longitude', parseFloat(longitude)); // Ensure it's a number
         formData.append('priority', document.getElementById('priority').value || 'MEDIUM');
 
         // Fetch CSRF Token
