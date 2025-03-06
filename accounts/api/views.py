@@ -1,6 +1,4 @@
-from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D
 from ..models import UserProfile
 from rescue.models import AnimalReport
 from rest_framework import generics, status
@@ -42,9 +40,9 @@ class NearbyVolunteersView(generics.ListAPIView):
                 UserProfile.objects.filter(
                     user_type="VOLUNTEER", location__isnull=False
                 )
-                .annotate(distance=Distance("location", user_location))
-                .filter(distance__lte=D(km=10))  # 10km radius
-                .order_by("distance")
+                # .annotate(distance=Distance("location", user_location))
+                # .filter(distance__lte=D(km=10))  # 10km radius
+                # .order_by("distance")
             )
 
             return volunteers
@@ -121,11 +119,11 @@ class UserReportView(generics.CreateAPIView):
             nearest_volunteer = (
                 UserProfile.objects.filter(
                     user_type="VOLUNTEER", location__isnull=False
-                )
-                .annotate(distance=Distance("location", report.location))
-                .filter(distance__lte=D(km=10))  # Ensure using km for distance
-                .order_by("distance")
-                .first()
+                ).first()
+                # .annotate(distance=Distance("location", report.location))
+                # .filter(distance__lte=D(km=10))  # Ensure using km for distance
+                # .order_by("distance")
+                # .first()
             )
 
             if nearest_volunteer:
@@ -143,7 +141,7 @@ class UserReportView(generics.CreateAPIView):
                         "volunteer": {
                             "name": nearest_volunteer.user.get_full_name()
                             or nearest_volunteer.user.username,
-                            "distance": f"{nearest_volunteer.distance.km:.2f} km",
+                            # "distance": f"{nearest_volunteer.distance.km:.2f} km",
                         },
                         "priority": report.priority,
                     },

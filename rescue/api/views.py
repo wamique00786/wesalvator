@@ -94,7 +94,7 @@ def get_all_users_locations(request):
         # Get active users (updated in last 5 minutes)
         active_time = timezone.now() - timedelta(minutes=5)
         users = UserProfile.objects.filter(
-            location__isnull=False, last_location_update__gte=active_time
+            location__isnull=False
         )
 
         users_data = []
@@ -114,7 +114,6 @@ def get_all_users_locations(request):
                 }
                 for h in history
             ]
-
             users_data.append(
                 {
                     "id": user_profile.user.id,
@@ -122,9 +121,9 @@ def get_all_users_locations(request):
                     "phone":str( user_profile.mobile_number),
                     "user_type": user_profile.user_type,
                     "location": {
-                        "latitude": user_profile.location.y,
-                        "longitude": user_profile.location.x,
-                        "last_update": user_profile.last_location_update.isoformat(),
+                        "latitude": user_profile.location.y if user_profile.location else None,
+                        "longitude": user_profile.location.x if user_profile.location else None,
+                        "last_update": user_profile.last_location_update.strftime("%B %d, %Y at %I:%M %p") if user_profile.last_location_update else None,
                     },
                     "location_history": location_history,
                 }
@@ -260,13 +259,12 @@ def update_volunteer_location(request):
 
 def get_volunteer_locations(request):
     locations = []
-    for location in VolunteerLocation.objects.all():
+    for user in UserProfile.objects.filter(user_type="VOLUNTEER", location__isnull=False).all():
         locations.append(
             {
-                "id": location.volunteer.id,
-                "name": location.volunteer.username,
-                "latitude": location.latitude,
-                "longitude": location.longitude,
+                "id": user.id,
+                "name": user,
+                "location": user.location,
             }
         )
     return JsonResponse(locations, safe=False)
