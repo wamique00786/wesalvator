@@ -1,12 +1,13 @@
 from django.contrib.gis.geos import Point
 from ..models import UserProfile
-from rescue.models import AnimalReport
+from rescue.models import AnimalReport, AnimalReportImage
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from ..serializers import (
     UserProfileSerializer,
     AnimalReportSerializer,
+    AnimalReport2Serializer,
     AnimalReportListSerializer,
 )
 from .. import send_email as sm
@@ -197,6 +198,53 @@ class UserReportView(generics.CreateAPIView):
             },
             status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
+
+### v2 of user-report
+class UserReportV2View(generics.CreateAPIView):
+    serializer_class = AnimalReport2Serializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        try:
+            logger.info(f"Received data: {request.data}")
+
+            # Validate required fields
+            if not request.data.get("description"):
+                return Response({"status": "error", "message": "Description is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not request.data.get("latitude") or not request.data.get("longitude"):
+                return Response({"status": "error", "message": "Location coordinates are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Ensure priority is valid
+            priority = request.data.get("priority", "MEDIUM").strip().upper()
+            if priority not in ["LOW", "MEDIUM", "HIGH"]:
+                return Response({"status": "error", "message": "Invalid priority. Choose from LOW, MEDIUM, HIGH"}, status=status.HTTP_400_BAD_REQUEST)
+
+            logger.info(f"Final Priority assigned: {priority}")
+
+            # Create the report
+            report = AnimalReport.objects.create(
+                user=request.user,
+                description=request.data["description"],
+                location=Point(float(request.data["longitude"]), float(request.data["latitude"]), srid=4326),
+                status="PENDING",
+                priority=priority,
+            )
+
+            # Handle multiple images
+            if "photos" in request.FILES:
+                images = request.FILES.getlist("photos")  # Get list of images
+                for image in images:
+                    AnimalReportImage.objects.create(report=report, image=image)
+
+            return Response(
+                {"status": "success", "message": "Report submitted.", "priority": report.priority},
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(f"Error in UserReportV2View: {str(e)}")
+            return Response({"status": "error", "message": f"Error processing report: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AnimalReportListView(generics.ListAPIView):

@@ -2,7 +2,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import UserProfile
-from rescue.models import AnimalReport
+from rescue.models import AnimalReport, AnimalReportImage
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.gis.geos import Point
 
@@ -161,3 +161,8 @@ class AnimalReportListSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnimalReport
         exclude = ('location', 'status')  # Removed the empty string in exclude
+
+class AnimalReport2Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnimalReport
+        fields = ['id', 'user', 'description', 'location', 'timestamp', 'status', 'assigned_to', 'priority']
