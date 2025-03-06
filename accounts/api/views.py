@@ -13,6 +13,9 @@ from ..serializers import (
 )
 from .. import send_email as sm
 import logging
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
 logger = logging.getLogger(__name__)
 
@@ -66,22 +69,33 @@ class UserReportView(generics.CreateAPIView):
 
             # Validate required fields
             if "photo" not in request.FILES:
-                return Response({"status": "error", "message": "Photo is required"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"status": "error", "message": "Photo is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             if not request.data.get("description"):
-                return Response({"status": "error", "message": "Description is required"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"status": "error", "message": "Description is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             if not request.data.get("latitude") or not request.data.get("longitude"):
-                return Response({"status": "error", "message": "Location coordinates are required"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"status": "error", "message": "Location coordinates are required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Ensure priority is valid
             priority = request.data.get("priority", "MEDIUM").strip().upper()
             if priority not in ["LOW", "MEDIUM", "HIGH"]:
-                return Response({"status": "error", "message": "Invalid priority. Choose from LOW, MEDIUM, HIGH"},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Invalid priority. Choose from LOW, MEDIUM, HIGH",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             logger.info(f"Final Priority assigned: {priority}")
 
@@ -90,7 +104,11 @@ class UserReportView(generics.CreateAPIView):
                 user=request.user,
                 photo=request.FILES["photo"],
                 description=request.data["description"],
-                location=Point(float(request.data["longitude"]), float(request.data["latitude"]), srid=4326),
+                location=Point(
+                    float(request.data["longitude"]),
+                    float(request.data["latitude"]),
+                    srid=4326,
+                ),
                 status="PENDING",
                 priority=priority,
             )
@@ -101,7 +119,9 @@ class UserReportView(generics.CreateAPIView):
 
             # **Find the nearest volunteer within 10km**
             nearest_volunteer = (
-                UserProfile.objects.filter(user_type="VOLUNTEER", location__isnull=False)
+                UserProfile.objects.filter(
+                    user_type="VOLUNTEER", location__isnull=False
+                )
                 .annotate(distance=Distance("location", report.location))
                 .filter(distance__lte=D(km=10))  # Ensure using km for distance
                 .order_by("distance")
@@ -116,15 +136,19 @@ class UserReportView(generics.CreateAPIView):
                 # Send email to volunteer
                 sm.send_mail_to_volunteer(nearest_volunteer, report)
 
-                return Response({
-                    "status": "success",
-                    "message": "Report submitted and assigned to a volunteer.",
-                    "volunteer": {
-                        "name": nearest_volunteer.user.get_full_name() or nearest_volunteer.user.username,
-                        "distance": f"{nearest_volunteer.distance.km:.2f} km",
+                return Response(
+                    {
+                        "status": "success",
+                        "message": "Report submitted and assigned to a volunteer.",
+                        "volunteer": {
+                            "name": nearest_volunteer.user.get_full_name()
+                            or nearest_volunteer.user.username,
+                            "distance": f"{nearest_volunteer.distance.km:.2f} km",
+                        },
+                        "priority": report.priority,
                     },
-                    "priority": report.priority,
-                }, status=status.HTTP_201_CREATED)
+                    status=status.HTTP_201_CREATED,
+                )
 
             # **If no volunteers, assign to admin**
             admin_profile = UserProfile.objects.filter(user_type="ADMIN").first()
@@ -135,23 +159,31 @@ class UserReportView(generics.CreateAPIView):
 
                 sm.send_mail_to_admin(admin_profile, report, request)
 
-                return Response({
-                    "status": "success",
-                    "message": "No nearby volunteers available. Report assigned to admin.",
-                    "assigned_to": "admin",
-                    "priority": report.priority,
-                }, status=status.HTTP_201_CREATED)
+                return Response(
+                    {
+                        "status": "success",
+                        "message": "No nearby volunteers available. Report assigned to admin.",
+                        "assigned_to": "admin",
+                        "priority": report.priority,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
 
-            return Response({
-                "status": "success",
-                "message": "Report submitted. Waiting for assignment.",
-                "priority": report.priority,
-            }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Report submitted. Waiting for assignment.",
+                    "priority": report.priority,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logger.error(f"Error in UserReportView: {str(e)}")
-            return Response({"status": "error", "message": f"Error processing report: {str(e)}"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": "error", "message": f"Error processing report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     def get(self, request, *args, **kwargs):
         return Response(
@@ -174,4 +206,4 @@ class AnimalReportListView(generics.ListAPIView):
         "-timestamp"
     )  # Get reports in descending order
     serializer_class = AnimalReportListSerializer
-    permission_classes = [IsAuthenticated]  
+    permission_classes = [IsAuthenticated]
