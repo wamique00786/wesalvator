@@ -14,7 +14,7 @@ class AccountsTest(APITestCase):
         }
 
         _response = self.client.post("/api/accounts/signup/", _data, format="json")
-        print(_response.json())  # Print response to debug validation errors
+        print(_response.json())  
         
         self.assertEqual(_response.status_code, status.HTTP_201_CREATED)  # Expect 201 instead of 200
         self.assertTrue(_response.data['message'], "User created successfully.")

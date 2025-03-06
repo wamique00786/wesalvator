@@ -105,7 +105,6 @@ class SignUpSerializer(serializers.ModelSerializer):
             data['mobile_number'] = None
         return data
 
-
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
@@ -154,7 +153,6 @@ class AnimalReportSerializer(serializers.ModelSerializer):
         validated_data['location'] = Point(longitude, latitude, srid=4326)
 
         return super().create(validated_data)
-
 
 class AnimalReportListSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username', read_only=True)  # Get username instead of ID
