@@ -106,7 +106,7 @@ function initMap() {
 
     setTimeout(() => {
         watchLocation();
-    }, 1000); // Small delay to allow map rendering
+    }, 10000); // Small delay to allow map rendering
 
     setInterval(() => {
         if (userMarker) {
@@ -263,7 +263,7 @@ async function fetchNearbyVolunteers(latitude, longitude) {
         }
 
         const response = await fetch(
-            `/volunteers/nearby/?lat=${latitude}&lng=${longitude}`,
+            `/api/volunteers/nearby/?lat=${latitude}&lng=${longitude}`,
             {
                 method: 'GET',
                 headers: {
@@ -338,9 +338,6 @@ async function sendReportToAdmin() {
 async function submitReport() {
     const descriptionInput = document.getElementById('description');
     const photoDataInput = document.getElementById('photoData'); // This holds base64
-    // const latitude = document.getElementById('latitude'); 
-    // const longitude = document.getElementById('longitude'); 
-
 
     if (!descriptionInput || !photoDataInput) {
         alert('Required input elements are missing.');
@@ -386,13 +383,7 @@ async function submitReport() {
             return;
         }
 
-        // const token = localStorage.getItem('token');  // Ensure user is authenticated
-        // if (!token) {
-        //     alert("You need to log in first.");
-        //     return;
-        // }
-
-        const response = await fetch('/api/accounts/user/', {
+        const response = await fetch('/api/user_report/', {
             method: 'POST',
             body: formData,
             headers: {
