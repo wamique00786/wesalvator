@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'http://wesalvator.com:3000/wesalvatore/wesalvator.git'
+        REPO_URL = 'http://wesalvator.com:3000/wesalvator/wesalvator.git'
         DOCKER_IMAGE = 'wamique00786/wesalvator'
         CONTAINER_NAME = 'wesalvator'
         DOCKER_BUILDKIT = '0'
