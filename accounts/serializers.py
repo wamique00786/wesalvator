@@ -2,7 +2,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import UserProfile
-from rescue.models import AnimalReport
+from rescue.models import AnimalReport, AnimalReportImage
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.gis.geos import Point
 
@@ -105,7 +105,6 @@ class SignUpSerializer(serializers.ModelSerializer):
             data['mobile_number'] = None
         return data
 
-
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
@@ -155,7 +154,6 @@ class AnimalReportSerializer(serializers.ModelSerializer):
 
         return super().create(validated_data)
 
-
 class AnimalReportListSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username', read_only=True)  # Get username instead of ID
     assigned_to = serializers.CharField(source='assigned_to.username', read_only=True)  # Get assigned_to 
@@ -163,3 +161,8 @@ class AnimalReportListSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnimalReport
         exclude = ('location', 'status')  # Removed the empty string in exclude
+
+class AnimalReport2Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnimalReport
+        fields = ['id', 'user', 'description', 'location', 'timestamp', 'status', 'assigned_to', 'priority']

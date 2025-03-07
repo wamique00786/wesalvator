@@ -17,4 +17,7 @@ docs/
 *.pyc.env
 .env
 postgres/
+
+#ignore my files..
 py_client/
+rough.py

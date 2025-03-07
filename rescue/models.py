@@ -55,7 +55,7 @@ class AnimalReport(models.Model):
     )
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    photo = models.ImageField(upload_to='animal_reports/')
+    photo = models.ImageField(upload_to='animal_reports/', null=True, blank=True)  # ✅ Single image support
     description = models.TextField()
     location = models.PointField(geography=True, null=True, blank=True)  # Allow null temporarily
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -67,12 +67,18 @@ class AnimalReport(models.Model):
         blank=True,
         related_name='assigned_reports'
     )
-    # ✅ New Priority Column
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM')
-    
+
     def __str__(self):
         return f"Report by {self.user.username} on {self.timestamp}"
-    
+
+class AnimalReportImage(models.Model):
+    report = models.ForeignKey(AnimalReport, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='animal_reports/')
+
+    def __str__(self):
+        return f"Image for Report ID {self.report.id}" 
+
 class RescueTask(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
