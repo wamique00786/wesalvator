@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "903848444577",
+    "project_id": "wesalvator-ce927",
+    "storage_bucket": "wesalvator-ce927.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903848444577:android:38330115671920ac3ae6e0",
+        "android_client_info": {
+          "package_name": "com.example.wesalvator"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "903848444577-bcqukb35g496n50ro0v8dak8e330q3u2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wesalvator",
+            "certificate_hash": "cb878e1be525e8746fd5b18e632b1bf3e189b186"
+          }
+        },
+        {
+          "client_id": "903848444577-n0gbmqt5avhhk81u9k0lu9mq5jo63nuo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wesalvator",
+            "certificate_hash": "7d0b8b2323d75ca2553c54984a9b22d204325ad3"
+          }
+        },
+        {
+          "client_id": "903848444577-2hkla79inscjq21rth4i5497flgjhn1l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEDjMuIeLmlOxCEF1utsADb0K2ip2E8Gw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "903848444577-2hkla79inscjq21rth4i5497flgjhn1l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "903848444577-5sikn76l5s3eguire77970oi83utrqkc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.wesalvator"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
