@@ -14,7 +14,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com']
+ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -157,9 +157,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-#GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
+GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
 #GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
-GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
+#GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
 
 

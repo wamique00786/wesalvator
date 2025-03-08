@@ -36,17 +36,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
-                        
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'animal_list' %}active{% endif %}" href="{% url 'animal_list' %}">
-                                <i class="fas fa-list me-1"></i>
-                                Animals
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'adopt_animal' %}active{% endif %}" href="{% url 'adopt_animal' %}">
                                 <i class="fas fa-heart me-1"></i>
-                                Adopt
+                                Adoption
                             </a>
                         </li>
                         <li class="nav-item">
@@ -70,7 +63,7 @@
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'subscription_plans' %}active{% endif %}" href="{% url 'subscription_plans' %}">
                                 <i class="fas fa-crown me-1"></i>
-                                Premium
+                                Get Premium
                             </a>
                         </li>                        
                     {% endif %}
