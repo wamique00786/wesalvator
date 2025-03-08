@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import AdoptableAnimal
 
-@admin.register(AdoptableAnimal)
 class AdoptableAnimalAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_adoptable')
-    search_fields = ('name', 'description')
-    list_filter = ('is_adoptable',)
+    list_display = ('category', 'description', 'is_adoptable')  # Update this line
+    search_fields = ('category', 'description')  # You can also add search fields if needed
+
+admin.site.register(AdoptableAnimal, AdoptableAnimalAdmin)

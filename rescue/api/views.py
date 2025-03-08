@@ -2,8 +2,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, user_passes_test
 from ..models import (
-    Animal,
-    MedicalRecord,
     RescueTask,
     VolunteerLocation,
     UserLocationHistory,
@@ -200,36 +198,13 @@ def get_nearest_volunteers(animal_lat, animal_lon, radius_km=10):
 
     return nearby_volunteers
 
-
-def animal_location_view(request, animal_id):
-    animal = get_object_or_404(Animal, id=animal_id)
-    medical_records = MedicalRecord.objects.filter(animal=animal)
-    nearby_volunteers = get_nearest_volunteers(
-        animal.latitude, animal.longitude
-    )  # Assuming Animal has latitude and longitude
-
-    context = {
-        "animal": animal,
-        "medical_records": medical_records,
-        "nearby_volunteers": nearby_volunteers,
-    }
-    return render(request, "rescue/animal_location.html", context)
-
-
 @login_required
 def rescued_animals_today(request):
-    today = timezone.now().date()
-    rescued_animals = Animal.objects.filter(rescue_date=today)
-
-    return render(
-        request,
-        "rescue/rescued_animals_today.html",
-        {
-            "rescued_animals": rescued_animals,
-            "total_rescued_today": rescued_animals.count(),
-        },
-    )
-
+    # Since the Animal model is removed, this view can be removed or modified
+    return render(request, "rescue/rescued_animals_today.html", {
+        "rescued_animals": [],  # Return an empty list or modify as needed
+        "total_rescued_today": 0,
+    })
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])

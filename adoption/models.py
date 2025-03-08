@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class AdoptableAnimal(models.Model):
-    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=100)
     description = models.TextField()
     photo = models.ImageField(upload_to='animal_photos/')
     # Add this field if it doesn't exist
@@ -14,4 +14,4 @@ class AdoptableAnimal(models.Model):
         ]
 
     def __str__(self):
-        return self.name
+        return self.category

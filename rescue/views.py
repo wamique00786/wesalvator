@@ -2,13 +2,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from .models import (
-    Animal,
     AnimalReport,
     RescueTask,
 
 )
 from accounts.models import UserProfile
-from .forms import AnimalForm, MedicalRecordForm
 import logging
 from django.contrib.auth import get_user_model
 logger = logging.getLogger(__name__)
@@ -84,10 +82,6 @@ def volunteer_dashboard(request):
         # Prepare context data
         context = {
             "user_profile": user_profile,
-            "total_animals": Animal.objects.count(),
-            "under_treatment": Animal.objects.filter(status="TREATMENT").count(),
-            "recovered": Animal.objects.filter(status="RECOVERED").count(),
-            "recent_animals": Animal.objects.order_by("-rescue_date")[:5],
             "volunteers": volunteers,
             "available_tasks": available_tasks,  # Add available tasks to context
             "completed_tasks": completed_tasks,  # Add completed tasks to context
@@ -126,11 +120,7 @@ def admin_dashboard(request):
 
     context = {
         "user_profile": user_profile,
-        "total_animals": Animal.objects.count(),
-        "under_treatment": Animal.objects.filter(status="TREATMENT").count(),
-        "recovered": Animal.objects.filter(status="RECOVERED").count(),
         "volunteer_count": UserProfile.objects.filter(user_type="VOLUNTEER").count(),
-        "recent_animals": Animal.objects.order_by("-rescue_date")[:5],
         "volunteers": UserProfile.objects.filter(user_type="VOLUNTEER"),
     }
     return render(request, "rescue/admin_dashboard.html", context)
@@ -160,81 +150,3 @@ def is_admin(user):
 
 def is_volunteer(user):
     return hasattr(user, "userprofile") and user.userprofile.user_type == "VOLUNTEER"
-
-
-# Modify your existing views to add role-based access
-@login_required
-@user_passes_test(lambda u: is_admin(u) or is_volunteer(u))
-def animal_list(request):
-    animals = Animal.objects.all()
-    return render(request, "rescue/animal_list.html", {"animals": animals})
-
-
-@login_required
-def animal_detail(request, pk):
-    animal = get_object_or_404(Animal, pk=pk)
-    print(f"Animal: {animal}")  # Debugging line
-    try:
-        medical_records = animal.medical_records.all()
-        print(f"Medical Records: {medical_records}")  # Debugging line
-    except AttributeError as e:
-        print(f"Error: {e}")  # Debugging line
-        raise
-    if request.method == "POST":
-        form = MedicalRecordForm(request.POST)
-        if form.is_valid():
-            medical_record = form.save(commit=False)
-            medical_record.animal = animal
-            medical_record.created_by = request.user
-            medical_record.save()
-            messages.success(request, "Medical record added successfully.")
-            return redirect("animal_detail", pk=pk)
-    else:
-        form = MedicalRecordForm()
-
-    return render(
-        request,
-        "rescue/animal_detail.html",
-        {
-            "animal": animal,
-            "medical_records": medical_records,
-            "form": form,
-        },
-    )
-
-
-@login_required
-def animal_create(request):
-    if request.method == "POST":
-        form = AnimalForm(request.POST, request.FILES)
-        if form.is_valid():
-            animal = form.save()
-            messages.success(request, "Animal record created successfully.")
-            return redirect("animal_detail", pk=animal.pk)
-    else:
-        form = AnimalForm()
-
-    return render(
-        request, "rescue/animal_form.html", {"form": form, "title": "Add New Animal"}
-    )
-
-
-@login_required
-def animal_edit(request, pk):
-    animal = get_object_or_404(Animal, pk=pk)
-
-    if request.method == "POST":
-        form = AnimalForm(request.POST, request.FILES, instance=animal)
-        if form.is_valid():
-            animal = form.save()
-            messages.success(request, "Animal record updated successfully.")
-            return redirect("animal_detail", pk=animal.pk)
-    else:
-        form = AnimalForm(instance=animal)
-
-    return render(
-        request,
-        "rescue/animal_form.html",
-        {"form": form, "title": f"Edit {animal.name}"},
-    )
-
