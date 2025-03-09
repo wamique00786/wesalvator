@@ -64,6 +64,14 @@ class NearbyVolunteersView(generics.ListAPIView):
         return context
 
 
+class AdminUserListView(generics.ListAPIView):
+    """
+    API View to fetch all admin users.
+    """
+    queryset = UserProfile.objects.filter(user_type="ADMIN")  # Get all admins
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]  # Requires authentication
+
 class UserReportView(generics.CreateAPIView):
     serializer_class = AnimalReportSerializer
     permission_classes = [IsAuthenticated]
