@@ -18,7 +18,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'user_type', 'location', 'distance']
+        fields = ['id', 'user', 'user_type', 'location', 'distance', 'mobile_number']
 
     def get_location(self, obj):
         """
