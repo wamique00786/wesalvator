@@ -106,19 +106,20 @@ function initMap() {
 
     setTimeout(() => {
         watchLocation();
-    }, 10000); // Small delay to allow map rendering
+    }, 5000); // Small delay to allow map rendering
 
     setInterval(() => {
         if (userMarker) {
             updateUserInfo(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
             fetchNearbyVolunteers(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
+                // Call function to fetch and display admins on the map
+            fetchAdmins();
         }
     }, 10000); // Update every 10 seconds
 }
+
 async function updateUserInfo(latitude, longitude) {
     try {
-        console.log("Updating user location:", latitude, longitude); // Debugging log
-
         // Ensure latitude & longitude are valid
         if (latitude === undefined || longitude === undefined) {
             console.error("Invalid coordinates received:", latitude, longitude);
@@ -164,28 +165,22 @@ async function updateUserInfo(latitude, longitude) {
             userMarker.setLatLng([latitude, longitude]);
         }
 
-        // Create popup content
-        const popupContent = `
-            <div class="user-popup">
-                <strong>User:</strong> ${userInfo.username}<br>
-                <strong>Phone:</strong> ${userInfo.phone}<br>
-                <strong>Location:</strong> ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
+        // Show popup with only "u"
+        if (userInfo.user_type === 'USER') {
+            const popupContent = "YOU";
             
-            </div>
-        `;
-
-        // Check if popup exists, then update content
-        if (userMarker.getPopup()) {
-            userMarker.getPopup().setContent(popupContent);
-        } else {
-            userMarker.bindPopup(popupContent).openPopup();
+            // Check if popup exists, then update content
+            if (userMarker.getPopup()) {
+                userMarker.setPopupContent(popupContent);
+            } else {
+                userMarker.bindPopup(popupContent).openPopup();
+            }
         }
 
     } catch (error) {
         console.error('Error updating user info:', error);
     }
 }
-
 
 
 function watchLocation() {
@@ -290,18 +285,24 @@ async function fetchNearbyVolunteers(latitude, longitude) {
                 const marker = L.marker([
                     volunteer.location.coordinates[1],  // latitude
                     volunteer.location.coordinates[0]   // longitude
-                ]).addTo(map);
+                ], {icon: markerIcons['VOLUNTEER']}).addTo(map);
 
                 const distance = volunteer.distance ? 
                     volunteer.distance.text : 
                     'Distance unknown';
+
+                const mobile_number = volunteer.mobile_number ? 
+                    volunteer.mobile_number: 
+                    'Not available';
+                console.log(mobile_number);
 
                 const name = volunteer.user ? 
                     (volunteer.user.first_name || volunteer.user.username) : 
                     'Volunteer';
 
                 marker.bindPopup(
-                    `<strong>${name}</strong><br>${distance}`
+                    `<strong>${name}</strong><br>${distance} <br>
+                    <strong>Mobile No.</strong>${mobile_number}`
                 );
                 window.volunteerMarkers.push(marker);
             }
@@ -311,6 +312,60 @@ async function fetchNearbyVolunteers(latitude, longitude) {
         console.error('Error fetching volunteers:', error);
     }
 }
+
+
+// Function to fetch and display all admins on the map
+async function fetchAdmins() {
+    try {
+        const response = await fetch('/api/admins/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Remove existing admin markers
+        if (window.adminMarkers) {
+            window.adminMarkers.forEach(marker => marker.remove());
+        }
+        window.adminMarkers = [];
+
+        // Loop through each admin and add them to the map
+        data.forEach(admin => {
+            if (admin.location && admin.location.coordinates) {
+                const marker = L.marker([
+                    admin.location.coordinates[1], // latitude
+                    admin.location.coordinates[0]  // longitude
+                ], { icon: markerIcons['ADMIN'] }).addTo(map);
+
+                // Get admin name
+                const name = admin.user.first_name || admin.user.username || "Admin";
+
+                // Get distance text
+                const distance = admin.distance ? admin.distance.text : "Distance unknown";
+                const mobile_number = admin.mobile_number ? admin.mobile_number : "Not available";
+
+                // Bind popup with name and distance
+                marker.bindPopup(`<strong>${name}</strong><br>${distance}<br>
+                    <strong>Mobile No.</strong>${mobile_number}`);
+                
+                // Store marker in global array
+                window.adminMarkers.push(marker);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching admins:', error);
+    }
+}
+
+
 
 // Function to send report to admin
 async function sendReportToAdmin() {
