@@ -18,7 +18,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'user_type', 'location', 'distance']
+        fields = ['id', 'user', 'user_type', 'location', 'distance', 'mobile_number']
 
     def get_location(self, obj):
         """
@@ -155,12 +155,20 @@ class AnimalReportSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class AnimalReportListSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.username', read_only=True)  # Get username instead of ID
-    assigned_to = serializers.CharField(source='assigned_to.username', read_only=True)  # Get assigned_to 
+    user = serializers.CharField(source='user.username', read_only=True)  
+    assigned_to = serializers.CharField(source='assigned_to.username', read_only=True)  
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = AnimalReport
-        exclude = ('location', 'status')  # Removed the empty string in exclude
+        exclude = ('location', 'status')  # Excluding 'location' but showing lat & lon
+
+    def get_latitude(self, obj):
+        return obj.location.y if obj.location else None  # Y coordinate represents latitude
+
+    def get_longitude(self, obj):
+        return obj.location.x if obj.location else None  # X coordinate represents longitude
 
 class AnimalReport2Serializer(serializers.ModelSerializer):
     class Meta:

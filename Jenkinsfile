@@ -6,7 +6,6 @@ pipeline {
         DOCKER_IMAGE = 'wamique00786/wesalvator'
         CONTAINER_NAME = 'wesalvator'
         DOCKER_BUILDKIT = '0'
-        TIMESTAMP = new Date().format("yyyyMMddHHmmss")
 
         // Database connection details
         DATABASE_HOST = credentials('DATABASE_HOST')
@@ -17,61 +16,75 @@ pipeline {
 
         // Email recipient
         EMAIL_RECIPIENT = "pavansingh3000@gmail.com"
-        
-        // Slack API token for sending notifications
-        SLACK_API_TOKEN = credentials('slack_api')  // This references your Slack API token
-        
+
+        // Slack API token
+        SLACK_API_TOKEN = credentials('slack_api')
+
         SCANNER_HOME = tool 'SonarQube Scanner'
     }
 
     stages {
-        stage('Git Clone') {
+        stage('Set Timestamp') {
             steps {
                 script {
-                    try {
-                        echo "Cloning repository from ${REPO_URL}"
-                        git branch: 'main', url: "${REPO_URL}"
-                    } catch (Exception e) {
-                        error "Git Clone failed: ${e.message}"
-                    }
+                    env.TIMESTAMP = sh(script: 'date +%Y%m%d%H%M%S', returnStdout: true).trim()
                 }
             }
         }
-        
-        stage('sonareque analysis') {
+
+        stage('Git Clone') {
             steps {
                 script {
-                    withSonarQubeEnv('sonar-server') {
-                         sh '''
-                            ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectName=wesalvator \
-                            -Dsonar.projectKey=wesalvator \
+                    withCredentials([usernameColonPassword(credentialsId: 'Gitea', variable: 'GITEA_CREDENTIALS')]) {
+                        echo "Cleaning workspace before cloning..."
+                        sh 'rm -rf ./* ./.??*'  // Ensures all files and hidden directories are deleted // Remove all files including any previous .git directory
+                        echo "Cloning private repository from http://wesalvator.com:3000/wesalvatore/wesalvator.git"
+                        sh '''
+                        git clone http://${GITEA_CREDENTIALS}@wesalvator.com:3000/wesalvatore/wesalvator.git .
                         '''
                     }
                 }
             }
         }
-       
+       /*
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    withSonarQubeEnv('sonar-server') {
+                        sh """
+                            ${SCANNER_HOME}/bin/sonar-scanner \
+                            -Dsonar.projectKey=wesalvator \
+                            -Dsonar.projectName=wesalvator \
+                            -Dsonar.sources=. \
+                            -Dsonar.qualitygate.wait=true
+                        """
+                        sh 'cp .scannerwork/report-task.txt sonar-report.json || echo "{}" > sonar-report.json'
+                    }
+                }
+            }
+        }
+        */
         stage('Docker Build') {
             steps {
                 script {
                     try {
                         echo "Building Docker image..."
-                        sh '''
+                        sh """
                         docker build -t ${DOCKER_IMAGE}:${TIMESTAMP} . 
                         docker tag ${DOCKER_IMAGE}:${TIMESTAMP} ${DOCKER_IMAGE}:latest
-                        '''
+                        """
                     } catch (Exception e) {
                         error "Docker Build failed: ${e.message}"
                     }
                 }
             }
         }
+
         stage('Trivy Scan Docker') {
             steps {
                 script {
                     echo "Running Trivy scan..."
-                    sh "trivy image ${DOCKER_IMAGE}:latest"
+                    sh "trivy image ${DOCKER_IMAGE}:latest -f json -o trivy-report.json || echo '{}' > trivy-report.json"
                 }
             }       
         }
@@ -82,13 +95,11 @@ pipeline {
                     try {
                         withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
                             echo "Pushing Docker image to Docker Hub..."
-                            sh '''
-                            export DOCKER_CONFIG=/tmp/.docker
-                            mkdir -p $DOCKER_CONFIG
-                            echo "{ \\"auths\\": { \\"https://index.docker.io/v1/\\": { \\"auth\\": \\"$(echo -n ${DOCKER_USER}:${DOCKER_PASSWORD} | base64)\\" } } }" > $DOCKER_CONFIG/config.json
+                            sh """
+                            echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USER}" --password-stdin
                             docker push ${DOCKER_IMAGE}:latest
                             docker push ${DOCKER_IMAGE}:${TIMESTAMP}
-                            '''
+                            """
                         }
                     } catch (Exception e) {
                         error "Docker Push failed: ${e.message}"
@@ -96,8 +107,20 @@ pipeline {
                 }
             }
         }
-        
-        
+        /*
+        stage('Send Trivy and SonarQube Reports to Slack') {  
+            steps {
+                script {
+                    echo "Sending Trivy scan and SonarQube report to Slack..."
+                    def trivyReportJson = readFile('trivy-report.json').take(4000)
+                    def sonarReportJson = readFile('sonar-report.json').take(4000)
+                    
+                    slackSend(channel: '#bugs-and-errors', message: "🔍 *Trivy Security Scan Report*:\n```${trivyReportJson}```")
+                    slackSend(channel: '#bugs-and-errors', message: "🛠 *SonarQube Bug Report*:\n```${sonarReportJson}```")
+                }
+            }
+        }
+        */
 
         stage('UAT Deployment') {
             steps {
@@ -141,8 +164,8 @@ pipeline {
                               -e DEFAULT_FROM_EMAIL="${DEFAULT_FROM_EMAIL}" \
                               -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
                               -e GDAL_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/libgdal.so \
-                              -v static_volume:/app/staticfiles \
-                              -v media_volume:/app/media \
+                              -v static_volume:/usr/share/nginx/html/static \
+                              -v media_volume:/usr/share/nginx/html/media \
                               ${DOCKER_IMAGE}:latest
                             docker system prune -a -f
                             '''
@@ -172,43 +195,6 @@ pipeline {
                     """,
                     mimeType: "text/html",
                     to: "${EMAIL_RECIPIENT}"
-                )
-                
-                // Slack Notification on success
-                slackSend(
-                    channel:  '#bugs-and-errors',  // Adjusted to your specific channel
-                    message: "✅ Jenkins Pipeline: Deployment Successful! 🚀 Repository: ${REPO_URL}"
-                )
-            }
-        }
-
-        failure {
-            script {
-                def failedStage = currentBuild.rawBuild.getLog(50).find { it.contains("failed") }
-                def logOutput = currentBuild.rawBuild.getLog(50).join("\n")
-                echo "Pipeline failed at stage: ${failedStage}"
-                echo "Error logs:\n${logOutput}"
-
-                emailext(
-                    subject: "Jenkins Pipeline: Deployment Failed ❌",
-                    body: """
-                    <h2>❌ Pipeline Failed</h2>
-                    <p><b>Failed Stage:</b> ${failedStage}</p>
-                    <p><b>Error Logs:</b></p>
-                    <pre>${logOutput}</pre>
-                    <br>
-                    <p>Please check the Jenkins logs for more details.</p>
-                    <p>Regards,</p>
-                    <p>Jenkins CI/CD</p>
-                    """,
-                    mimeType: "text/html",
-                    to: "${EMAIL_RECIPIENT}"
-                )
-
-                // Slack Notification on failure
-                slackSend(
-                    channel: '#bugs-and-errors',  // Adjusted to your specific channel
-                    message: "❌ Jenkins Pipeline: Deployment Failed! 🚨 Failed Stage: ${failedStage}"
                 )
             }
         }

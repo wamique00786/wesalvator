@@ -23,13 +23,12 @@ from django.contrib.auth import get_user_model
 from ..serializers import (
     UserLocationSerializer,
     UserLocationHistorySerializer,
+    UserProfileSerializer
 )
 
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
-
-
 
 @api_view(["POST", "GET"])
 @permission_classes([IsAuthenticated])
@@ -38,6 +37,9 @@ def save_user_location(request):
         user_profile = request.user.userprofile  # Get the user's profile
 
         if request.method == "GET":
+            # Serialize current user profile
+            user_serializer = UserProfileSerializer(user_profile, context={"request": request})
+            
             # Fetch last 10 location history records for the user
             location_history = UserLocationHistory.objects.filter(
                 user=request.user
@@ -48,16 +50,11 @@ def save_user_location(request):
 
             return Response(
                 {
-                    "latitude": (
-                        user_profile.location.y if user_profile.location else None
-                    ),
-                    "longitude": (
-                        user_profile.location.x if user_profile.location else None
-                    ),
-                    "last_update": user_profile.last_location_update,
-                    "location_history": history_serializer.data,  # Return last 10 location history records
+                    "user": user_serializer.data,  # Current user details
+                    "location_history": history_serializer.data,  # Last 10 location history records
                 }
             )
+
 
         # Handle POST request (Updating location)
         serializer = UserLocationSerializer(
@@ -157,6 +154,7 @@ def get_user_info(request):
         )
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
 
 
 def volunteer_locations(request):

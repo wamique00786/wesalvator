@@ -18,6 +18,11 @@ import logging
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate, login
+from rest_framework.authtoken.models import Token
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,18 +40,16 @@ class NearbyVolunteersView(generics.ListAPIView):
                 return UserProfile.objects.none()
 
             # Convert to float and create Point
-            user_location = Point(
-                float(lng), float(lat), srid=4326  # longitude first  # latitude second
-            )
+            user_location = Point(float(lng), float(lat), srid=4326)  # longitude first, latitude second
 
             # Query for nearby volunteers with distance annotation
             volunteers = (
                 UserProfile.objects.filter(
                     user_type="VOLUNTEER", location__isnull=False
                 )
-                # .annotate(distance=Distance("location", user_location))
-                # .filter(distance__lte=D(km=10))  # 10km radius
-                # .order_by("distance")
+                .annotate(distance=Distance("location", user_location))  # Calculate distance
+                # .filter(distance__lte=D(km=10))  # 10km radius filter
+                .order_by("distance")  # Sort by nearest first
             )
 
             return volunteers
@@ -56,9 +59,39 @@ class NearbyVolunteersView(generics.ListAPIView):
             return UserProfile.objects.none()
 
     def get_serializer_context(self):
+        """
+        Passes additional context to serializer
+        """
         context = super().get_serializer_context()
-        context["distance"] = True  # Add flag to include distance in serializer
+        context["distance"] = True  # Ensures distance is included in the response
         return context
+
+
+class AdminUserListView(generics.ListAPIView):
+    """
+    API View to fetch all admin users and calculate the distance from the authenticated user.
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user  # Get the authenticated user
+        
+        # Ensure the user has a valid location
+        if not hasattr(user, "userprofile") or not user.userprofile.location:
+            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=None)
+
+        # Get the user's location as a Point
+        user_location = user.userprofile.location
+
+        # Query all admins with a valid location and annotate distance
+        admins = (
+            UserProfile.objects.filter(user_type="ADMIN", location__isnull=False)
+            .annotate(distance=Distance("location", user_location))
+            .order_by("distance")  # Optional: order by closest admins
+        )
+
+        return admins
 
 
 class UserReportView(generics.CreateAPIView):
