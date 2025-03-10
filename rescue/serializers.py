@@ -14,7 +14,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'name', 'distance', 'location']
+        fields = ['id', 'name', 'distance', 'user_type', 'mobile_number', 'location']
 
     def get_name(self, obj):
         return obj.user.get_full_name() or obj.user.username
@@ -67,10 +67,12 @@ class UserLocationSerializer(serializers.ModelSerializer):
 class UserLocationHistorySerializer(serializers.ModelSerializer):
     latitude = serializers.SerializerMethodField()
     longitude = serializers.SerializerMethodField()
+    timestamp = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')  # Format the timestamp
+
 
     class Meta:
         model = UserLocationHistory
-        fields = ['latitude', 'longitude', 'timestamp', 'user_type']
+        fields = ['latitude', 'longitude', 'timestamp', ]
 
     def get_latitude(self, obj):
         return obj.location.y
