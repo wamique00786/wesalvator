@@ -22,6 +22,8 @@ from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +68,6 @@ class NearbyVolunteersView(generics.ListAPIView):
         context["distance"] = True  # Ensures distance is included in the response
         return context
 
-
 class AdminUserListView(generics.ListAPIView):
     """
     API View to fetch all admin users and calculate the distance from the authenticated user.
@@ -79,7 +80,7 @@ class AdminUserListView(generics.ListAPIView):
         
         # Ensure the user has a valid location
         if not hasattr(user, "userprofile") or not user.userprofile.location:
-            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=None)
+            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=Value(None))
 
         # Get the user's location as a Point
         user_location = user.userprofile.location
@@ -87,7 +88,7 @@ class AdminUserListView(generics.ListAPIView):
         # Query all admins with a valid location and annotate distance
         admins = (
             UserProfile.objects.filter(user_type="ADMIN", location__isnull=False)
-            .annotate(distance=Distance("location", user_location))
+            .annotate(distance=Coalesce(Distance("location", user_location), Value(None)))
             .order_by("distance")  # Optional: order by closest admins
         )
 
