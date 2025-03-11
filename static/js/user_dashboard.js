@@ -194,7 +194,8 @@ async function fetchNearbyVolunteers(latitude, longitude) {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                }
+                },
+                credentials: 'include'
             }
         );
 
@@ -203,6 +204,7 @@ async function fetchNearbyVolunteers(latitude, longitude) {
         }
 
         const data = await response.json();
+        console.log('Fetched volunteers:', data);  // Debug log
         
         // Clear existing volunteer markers
         if (window.volunteerMarkers) {
@@ -401,23 +403,41 @@ document.getElementById('reportAnimalForm').addEventListener('submit', (event) =
 
 // Single event listener for initialization
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize map
+    console.log('DOM Content Loaded');
+    
+    // Initialize map first
     initMap();
     
-    // Initial fetch of volunteers and admins
-    if (userMarker) {
-        const { lat, lng } = userMarker.getLatLng();
-        fetchNearbyVolunteers(lat, lng);
-        fetchAdmins();
-    }
-
-    // Set up periodic updates
-    setInterval(() => {
+    // Wait a short moment for map and user location to initialize
+    setTimeout(() => {
+        // Initial fetch of locations
         if (userMarker) {
             const { lat, lng } = userMarker.getLatLng();
-            updateUserInfo(lat, lng);
+            console.log('Initial location fetch:', lat, lng);
+            
+            // Save initial user location
+            saveUserLocation(lat, lng);
+            
+            // Fetch initial volunteer and admin locations
             fetchNearbyVolunteers(lat, lng);
             fetchAdmins();
+        } else {
+            console.log('User marker not yet initialized');
         }
-    }, 10000);
+
+        // Set up periodic updates for all locations
+        setInterval(() => {
+            if (userMarker) {
+                const { lat, lng } = userMarker.getLatLng();
+                console.log('Updating locations:', lat, lng);
+                
+                // Update user location in database
+                saveUserLocation(lat, lng);
+                
+                // Fetch updated volunteer and admin locations
+                fetchNearbyVolunteers(lat, lng);
+                fetchAdmins();
+            }
+        }, 10000); // Update every 10 seconds
+    }, 2000); // Wait 2 seconds for initialization
 });
