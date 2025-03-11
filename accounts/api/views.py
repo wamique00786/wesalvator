@@ -31,6 +31,14 @@ from ..serializers import (
 from .. import send_email as sm
 
 import logging
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate, login
+from rest_framework.authtoken.models import Token
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
+
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +133,6 @@ class NearbyVolunteersView(generics.ListAPIView):
         context["distance"] = True  # Ensures distance is included in the response
         return context
 
-
 class AdminUserListView(generics.ListAPIView):
     """
     API View to fetch all admin users and calculate the distance from the authenticated user.
@@ -140,17 +147,20 @@ class AdminUserListView(generics.ListAPIView):
         ).select_related('user')
         
         # Ensure the user has a valid location
-        if hasattr(user, "userprofile") and user.userprofile.location:
-            return base_query.filter(
-                location__isnull=False  # Only include admins with locations
-            ).annotate(
-                distance=Distance(
-                    "location",
-                    user.userprofile.location
-                )
-            ).order_by("distance")
-        
-        return base_query
+        if not hasattr(user, "userprofile") or not user.userprofile.location:
+            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=None)
+
+        # Get the user's location as a Point
+        user_location = user.userprofile.location
+
+        # Query all admins with a valid location and annotate distance
+        admins = (
+            UserProfile.objects.filter(user_type="ADMIN", location__isnull=False)
+            .annotate(distance=Distance("location", user_location))
+            .order_by("distance")  # Optional: order by closest admins
+        )
+
+        return admins
 
 
 class UserReportView(generics.CreateAPIView):
