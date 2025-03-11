@@ -321,7 +321,8 @@ async function fetchAdmins() {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-            }
+            },
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -329,6 +330,7 @@ async function fetchAdmins() {
         }
 
         const data = await response.json();
+        console.log('Fetched admins:', data);
 
         // Remove existing admin markers
         if (window.adminMarkers) {
@@ -342,20 +344,22 @@ async function fetchAdmins() {
                 const marker = L.marker([
                     admin.location.coordinates[1], // latitude
                     admin.location.coordinates[0]  // longitude
-                ], { icon: markerIcons['ADMIN'] }).addTo(map);
+                ], {
+                    icon: markerIcons['ADMIN'] // Use the ADMIN icon
+                }).addTo(map);
 
-                // Get admin name
-                const name = admin.user.first_name || admin.user.username || "Admin";
-
-                // Get distance text
+                // Get admin name and info
+                const name = admin.user.username || "Admin";
                 const distance = admin.distance ? admin.distance.text : "Distance unknown";
-                const mobile_number = admin.mobile_number ? admin.mobile_number : "Not available";
+                const mobile_number = admin.mobile_number || "Not available";
 
                 // Bind popup with name and distance
-                marker.bindPopup(`<strong>${name}</strong><br>${distance}<br>
-                    <strong>Mobile No.</strong>${mobile_number}`);
+                marker.bindPopup(`
+                    <strong>${name}</strong><br>
+                    ${distance}<br>
+                    <strong>Mobile No:</strong> ${mobile_number}
+                `);
                 
-                // Store marker in global array
                 window.adminMarkers.push(marker);
             }
         });
@@ -465,5 +469,25 @@ document.getElementById('reportAnimalForm').addEventListener('submit', (event) =
     submitReport(); // Call the submitReport function
 });
 
-// Initialize map when page loads
-document.addEventListener('DOMContentLoaded', initMap);
+// Single event listener for initialization
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize map
+    initMap();
+    
+    // Initial fetch of volunteers and admins
+    if (userMarker) {
+        const { lat, lng } = userMarker.getLatLng();
+        fetchNearbyVolunteers(lat, lng);
+        fetchAdmins();
+    }
+
+    // Set up periodic updates
+    setInterval(() => {
+        if (userMarker) {
+            const { lat, lng } = userMarker.getLatLng();
+            updateUserInfo(lat, lng);
+            fetchNearbyVolunteers(lat, lng);
+            fetchAdmins();
+        }
+    }, 10000);
+});

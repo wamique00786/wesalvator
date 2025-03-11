@@ -1,9 +1,24 @@
 from django.contrib.gis.geos import Point
-from ..models import UserProfile
-from rescue.models import AnimalReport, AnimalReportImage
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authtoken.models import Token
+
+from ..models import UserProfile
+from rescue.models import AnimalReport, AnimalReportImage
 from ..serializers import (
     UserProfileSerializer,
     AnimalReportSerializer,
@@ -14,18 +29,62 @@ from ..serializers import (
     SignUpSerializer
 )
 from .. import send_email as sm
-import logging
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate, login
-from rest_framework.authtoken.models import Token
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.measure import D
 
+import logging
 
 logger = logging.getLogger(__name__)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_admin_location(request):
+    try:
+        # Ensure user is an admin
+        if not hasattr(request.user, 'userprofile') or request.user.userprofile.user_type != 'ADMIN':
+            return Response({
+                'status': 'error',
+                'message': 'Only admin users can update their location'
+            }, status=403)
+
+        # Get coordinates from request
+        latitude = float(request.data.get('latitude'))
+        longitude = float(request.data.get('longitude'))
+
+        # Validate coordinates
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return Response({
+                'status': 'error',
+                'message': 'Invalid coordinates'
+            }, status=400)
+
+        # Create Point object
+        location = Point(longitude, latitude, srid=4326)
+
+        # Update admin's location
+        profile = request.user.userprofile
+        profile.location = location
+        profile.last_location_update = timezone.now()
+        profile.save()
+
+        return Response({
+            'status': 'success',
+            'message': 'Admin location updated successfully',
+            'data': {
+                'latitude': latitude,
+                'longitude': longitude,
+                'timestamp': timezone.now().isoformat()
+            }
+        })
+
+    except (TypeError, ValueError) as e:
+        return Response({
+            'status': 'error',
+            'message': f'Invalid coordinates: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 class NearbyVolunteersView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
@@ -76,22 +135,22 @@ class AdminUserListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user  # Get the authenticated user
+        base_query = UserProfile.objects.filter(
+            user_type="ADMIN"
+        ).select_related('user')
         
         # Ensure the user has a valid location
-        if not hasattr(user, "userprofile") or not user.userprofile.location:
-            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=None)
-
-        # Get the user's location as a Point
-        user_location = user.userprofile.location
-
-        # Query all admins with a valid location and annotate distance
-        admins = (
-            UserProfile.objects.filter(user_type="ADMIN", location__isnull=False)
-            .annotate(distance=Distance("location", user_location))
-            .order_by("distance")  # Optional: order by closest admins
-        )
-
-        return admins
+        if hasattr(user, "userprofile") and user.userprofile.location:
+            return base_query.filter(
+                location__isnull=False  # Only include admins with locations
+            ).annotate(
+                distance=Distance(
+                    "location",
+                    user.userprofile.location
+                )
+            ).order_by("distance")
+        
+        return base_query
 
 
 class UserReportView(generics.CreateAPIView):
