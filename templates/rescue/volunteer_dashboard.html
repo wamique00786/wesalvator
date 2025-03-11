@@ -47,45 +47,63 @@
 
 <script>
 let map, userMarkers = {};
-    
+const markerIcons = {
+    'USER': L.icon({
+        iconUrl: '/static/images/user-marker.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    }),
+    'VOLUNTEER': L.icon({
+        iconUrl: '/static/images/volunteer-marker.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    }),
+    'ADMIN': L.icon({
+        iconUrl: '/static/images/admin-marker.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    })
+};
+
 // Initialize the map
 function initMap() {
-    // Create the map and set default center
-    map = L.map('map').setView([0, 0], 2);
-    
-    // Add OpenStreetMap tiles
+    map = L.map('map').setView([27.531569, 80.748748], 10); // Default to a location
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
-    
-    // Fetch and display all user locations
-    updateAllUsersLocations();
+
+    // Start fetching all user locations every 10 seconds
+    setInterval(updateAllUsersLocations, 10000);
 }
-    
-// Fetch and update all users' locations
+
+// Fetch and update all users & admin locations
 async function updateAllUsersLocations() {
     try {
-        const response = await fetch('/api/all-users-locations/');
+        const response = await fetch('/api/all-user-locations/');
         const data = await response.json();
-        console.log("API Response Data:", data); // Debugging line
-    
+        console.log("API Response Data:", data); // Debugging
+
         if (data.status === 'success') {
             data.users.forEach(user => {
                 const markerId = `user-${user.id}`;
                 const markerLatLng = [user.location.latitude, user.location.longitude];
-    
+
                 // Create or update marker
                 if (userMarkers[markerId]) {
                     userMarkers[markerId].setLatLng(markerLatLng);
+                    userMarkers[markerId].bindPopup(createPopupContent(user));
                 } else {
-                    const marker = L.marker(markerLatLng).addTo(map);
-                    marker.bindPopup(createPopupContent(user)); // Bind popup with user info
+                    const marker = L.marker(markerLatLng, { icon: markerIcons[user.user_type] || markerIcons['USER'] }).addTo(map);
+                    marker.bindPopup(createPopupContent(user));
                     userMarkers[markerId] = marker;
                 }
             });
-    
-            // Auto-adjust map bounds to fit all markers
+
+            // Auto-adjust map to fit all markers
             const allMarkers = Object.values(userMarkers).map(marker => marker.getLatLng());
             if (allMarkers.length) {
                 const bounds = L.latLngBounds(allMarkers);
@@ -96,63 +114,91 @@ async function updateAllUsersLocations() {
         console.error('Error updating user locations:', error);
     }
 }
-    
-async function watchLocation() {
-    try {
-        // Fetch the current user's info from the backend
-        const userInfoResponse = await fetch('/api/user-info/', {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'), // Assuming you have the CSRF token
+
+// Watch volunteer's live location and update every 10 sec
+function watchVolunteerLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            async function (position) {
+                if (!position.coords || !position.coords.latitude || !position.coords.longitude) {
+                    console.error("Latitude or Longitude is missing!");
+                    return;
+                }
+
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                console.log("Volunteer live location:", latitude, longitude);
+
+                // Save in cookies
+                document.cookie = `voln_latitude=${latitude}; path=/`;
+                document.cookie = `voln_longitude=${longitude}; path=/`;
+
+                // Update location in DB
+                await updateVolunteerLocation(latitude, longitude);
+
+                // Update marker on map
+                if (userMarkers['current-volunteer']) {
+                    userMarkers['current-volunteer'].setLatLng([latitude, longitude]);
+                } else {
+                    const volMarker = L.marker([latitude, longitude], { icon: markerIcons['VOLUNTEER'] }).addTo(map);
+                    volMarker.bindPopup("YOU (Volunteer)");
+                    userMarkers['current-volunteer'] = volMarker;
+                }
             },
-        });
-        
-        if (!userInfoResponse.ok) {
-            console.log('Failed to fetch user information:', userInfoResponse.status);
-            throw new Error('Failed to fetch user information');
-        }
-        const currentUser = await userInfoResponse.json();
-        console.log('User info:', currentUser);
+            function (error) {
+                console.error('Error watching location:', error);
+            },
+            { enableHighAccuracy: true }
+        );
 
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
+        // Update location every 10 sec
+        setInterval(async () => {
+            const latitude = getCookie('voln_latitude');
+            const longitude = getCookie('voln_longitude');
 
-                    // Update the user's location
-                    currentUser.location = { latitude, longitude };
-
-                    // Check if a marker for the current user exists
-                    if (userMarkers['current-user']) {
-                        // Update the marker's position
-                        userMarkers['current-user'].setLatLng([latitude, longitude]);
-                        userMarkers['current-user'].bindPopup(createPopupContent(currentUser));
-                    } else {
-                        // Create a new marker for the user
-                        const userMarker = L.marker([latitude, longitude]).addTo(map);
-                        userMarker.bindPopup(createPopupContent(currentUser)); // Add popup
-                        userMarkers['current-user'] = userMarker;
-                    }
-
-                    // Optionally adjust the map view to the user's location
-                    map.setView([latitude, longitude], 13);
-                },
-                (error) => {
-                    console.error('Error watching location:', error);
-                },
-                { enableHighAccuracy: true }
-            );
-        } else {
-            console.error('Geolocation is not supported by this browser.');
-        }
-    } catch (error) {
-        console.error('Error initializing watchLocation:', error);
+            if (latitude && longitude) {
+                await updateVolunteerLocation(latitude, longitude);
+            }
+        }, 10000);
+    } else {
+        console.error('Geolocation is not supported by this browser.');
     }
 }
 
-// Helper function to create popup content
+// Send volunteer location to the backend
+async function updateVolunteerLocation(latitude, longitude) {
+    try {
+        if (!latitude || !longitude) {
+            console.error("Invalid volunteer coordinates:", latitude, longitude);
+            return;
+        }
+
+        // Fetch CSRF Token
+        const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+        const response = await fetch('/api/save-location/', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ latitude, longitude })
+        });
+
+        if (!response.ok) {
+            console.error("Failed to save volunteer location:", await response.text());
+            return;
+        }
+
+        console.log("Volunteer location updated successfully.");
+    } catch (error) {
+        console.error('Error updating volunteer location:', error);
+    }
+}
+
+// Helper function to create user popup content
 function createPopupContent(user) {
-    console.log("User data:", user);
     return `
         <div>
             <strong>Username:</strong> ${user.username}<br>
@@ -163,14 +209,14 @@ function createPopupContent(user) {
     `;
 }
 
-// Function to get CSRF token from cookies
+// Get CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
             const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            if (cookie.startsWith(name + '=')) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
             }
@@ -179,10 +225,11 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Initialize map when the page loads
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize map and watch location when page loads
+document.addEventListener('DOMContentLoaded', function () {
     initMap();
-    watchLocation();
+    watchVolunteerLocation();
 });
+
 </script>
 {% endblock %}
