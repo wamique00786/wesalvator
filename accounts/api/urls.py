@@ -10,5 +10,6 @@ urlpatterns =[
     path('animal_reports/', views.AnimalReportListView.as_view()),
     path('user_report2/', views.UserReportV2View.as_view()),
     path('volunteers/nearby/', views.NearbyVolunteersView.as_view(), name='nearby_volunteers'),
-    path('admins/', views.AdminUserListView.as_view())
+    path('save-admin-location/', views.save_admin_location, name='save_admin_location'),
+    path('admins/', views.AdminUserListView.as_view(), name='admin_list'),
 ]

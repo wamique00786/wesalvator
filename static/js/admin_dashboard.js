@@ -116,3 +116,69 @@ function viewVolunteerMap(username, phone, latitude, longitude, userType) {
     // Set the map view to the marker
     map.setView([latitude, longitude], 13);
 }
+
+// Function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function updateAdminLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                console.log('Admin location captured:', latitude, longitude);
+                
+                try {
+                    const response = await fetch('/api/save-admin-location/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({ 
+                            latitude: latitude,
+                            longitude: longitude 
+                        }),
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update location');
+                    }
+
+                    const data = await response.json();
+                    console.log('Location update response:', data);
+                } catch (error) {
+                    console.error('Error updating location:', error);
+                }
+            },
+            (error) => {
+                console.error('Error getting location:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
+        );
+    }
+}
+
+// Initialize location tracking
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Admin dashboard loaded, starting location tracking");
+    updateAdminLocation(); // Initial update
+    setInterval(updateAdminLocation, 10000); // Update every 10 seconds
+});
