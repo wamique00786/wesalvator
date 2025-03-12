@@ -18,7 +18,7 @@ class _TaskDetailsPagesState extends State<TaskDetailsPages> {
   void _getCurrentLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
       );
 
       LatLng newLocation = LatLng(position.latitude, position.longitude);

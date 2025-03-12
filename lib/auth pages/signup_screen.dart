@@ -1,16 +1,18 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import '../services/auth_service.dart';
+import 'package:wesalvator/services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  _SignupScreenState createState() => _SignupScreenState();
+  SignupScreenState createState() => SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class SignupScreenState extends State<SignupScreen> {
   final AuthService authService = AuthService();
 
   final TextEditingController _usernameController = TextEditingController();
@@ -48,12 +50,12 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     var response = await authService.signup(
-      username,
-      email,
-      password,
-      confirmPassword,
-      mobileNumber,
-      userType,
+      username: username,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+      phone: mobileNumber,
+      userType: userType,
     );
 
     setState(() => _isLoading = false);
@@ -99,22 +101,33 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 10),
                 _buildTextField(Icons.email, "Email", _emailController),
                 const SizedBox(height: 10),
-                _buildTextField(Icons.lock, "Password", _passwordController,
-                    isPassword: true),
+                _buildTextField(
+                  Icons.lock,
+                  "Password",
+                  _passwordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 10),
                 _buildTextField(
-                    Icons.lock, "Confirm Password", _confirmPasswordController,
-                    isPassword: true),
+                  Icons.lock,
+                  "Confirm Password",
+                  _confirmPasswordController,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 10),
                 _buildTextField(
-                    Icons.phone, "Mobile Number", _mobileNumberController),
+                  Icons.phone,
+                  "Mobile Number",
+                  _mobileNumberController,
+                ),
                 const SizedBox(height: 10),
                 _buildDropdownField(Icons.person, "Select User Type"),
                 const SizedBox(height: 20),
                 Center(
-                  child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.teal[900])
-                      : _buildButton("Sign Up", Colors.teal[900]!, _signup),
+                  child:
+                      _isLoading
+                          ? CircularProgressIndicator(color: Colors.teal[900])
+                          : _buildButton("Sign Up", Colors.teal[900]!, _signup),
                 ),
               ],
             ),
@@ -125,8 +138,11 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildTextField(
-      IconData icon, String hint, TextEditingController controller,
-      {bool isPassword = false}) {
+    IconData icon,
+    String hint,
+    TextEditingController controller, {
+    bool isPassword = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
@@ -186,8 +202,10 @@ class _SignupScreenState extends State<SignupScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 50),
       ),
       onPressed: signup,
-      child: Text(text,
-          style: GoogleFonts.poppins(fontSize: 18, color: Colors.white)),
+      child: Text(
+        text,
+        style: GoogleFonts.poppins(fontSize: 18, color: Colors.white),
+      ),
     );
   }
 }

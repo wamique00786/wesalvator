@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import '../auth pages/login_screen.dart';
 import 'package:wesalvator/provider/user_provider.dart';
@@ -115,23 +114,6 @@ class NavBar extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    final storage = const FlutterSecureStorage();
-
-    // Clear secure storage
-    await storage.deleteAll();
-
-    // Clear user data from provider
-    Provider.of<UserProvider>(context, listen: false).logout();
-
-    // Navigate to login screen
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
     );
   }
 

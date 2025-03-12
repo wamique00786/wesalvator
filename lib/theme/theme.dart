@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -170,6 +172,7 @@ class AppTheme {
         borderSide: BorderSide(color: Color(0xFFD4AF37), width: 2),
       ),
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
       hintStyle: TextStyle(color: Color(0xFFF5F5F5).withOpacity(0.6)),
     ),
   );

@@ -18,7 +18,8 @@ class _LocationServicesState extends State<LocationServices> {
       log('Location Denied');
     } else {
       Position currentposition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best);
+        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
+      );
       log("lattitue=${currentposition.latitude.toString()}");
       log("longitude=${currentposition.longitude.toString()}");
     }
@@ -27,12 +28,9 @@ class _LocationServicesState extends State<LocationServices> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('GeoLocator'),
-          centerTitle: true,
-        ),
-        body: Center(
-            child: ElevatedButton(
+      appBar: AppBar(title: Text('GeoLocator'), centerTitle: true),
+      body: Center(
+        child: ElevatedButton(
           onPressed: () {
             getCurrentLocation();
           },
@@ -44,6 +42,8 @@ class _LocationServicesState extends State<LocationServices> {
             "SEND",
             style: TextStyle(color: Colors.white, fontSize: 18),
           ),
-        )));
+        ),
+      ),
+    );
   }
 }

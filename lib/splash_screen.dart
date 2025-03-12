@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'auth pages/login_screen.dart';
@@ -42,8 +44,8 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              LoginScreen(),
+          pageBuilder:
+              (context, animation, secondaryAnimation) => LoginScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

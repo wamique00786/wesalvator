@@ -41,62 +41,61 @@ class _GeolocTrackingWidgetState extends State<GeolocTrackingWidget> {
     return Column(
       children: [
         Expanded(
-          child: currentLocation == null
-              ? const Center(child: CircularProgressIndicator())
-              : FlutterMap(
-                  mapController: mapController,
-                  options: MapOptions(
-                    initialCenter: currentLocation!,
-                    initialZoom: 24.0,
+          child:
+              currentLocation == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : FlutterMap(
+                    mapController: mapController,
+                    options: MapOptions(
+                      initialCenter: currentLocation!,
+                      initialZoom: 24.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: currentLocation!,
+                            width: 60,
+                            height: 60,
+                            child: const Icon(
+                              Icons.person_pin_circle,
+                              color: Colors.blue,
+                              size: 40,
+                            ),
+                          ),
+                          Marker(
+                            point: widget.destination,
+                            width: 60,
+                            height: 60,
+                            child: const Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 40,
+                            ),
+                          ),
+                        ],
+                      ),
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: polylinePoints,
+                            strokeWidth: 4.0,
+                            color: Colors.blueAccent,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: currentLocation!,
-                          width: 60,
-                          height: 60,
-                          child: const Icon(
-                            Icons.person_pin_circle,
-                            color: Colors.blue,
-                            size: 40,
-                          ),
-                        ),
-                        Marker(
-                          point: widget.destination,
-                          width: 60,
-                          height: 60,
-                          child: const Icon(
-                            Icons.location_on,
-                            color: Colors.red,
-                            size: 40,
-                          ),
-                        ),
-                      ],
-                    ),
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: polylinePoints,
-                          strokeWidth: 4.0,
-                          color: Colors.blueAccent,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: ElevatedButton(
             onPressed: isTracking ? _stopTracking : _startTracking,
-            child: Text(
-              isTracking ? 'Stop Tracking' : 'Start Tracking',
-            ),
+            child: Text(isTracking ? 'Stop Tracking' : 'Start Tracking'),
           ),
         ),
       ],
@@ -105,7 +104,7 @@ class _GeolocTrackingWidgetState extends State<GeolocTrackingWidget> {
 
   void _fetchCurrentLocation() async {
     Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     setState(() {

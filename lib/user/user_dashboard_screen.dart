@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:wesalvator/provider/user_provider.dart';
 import 'package:wesalvator/services/chatbot.dart';
 import 'package:wesalvator/services/compressImage.dart';
+import 'package:wesalvator/services/notification.dart';
 import 'package:wesalvator/views/navbar.dart';
 
 class UserDashBoardScreen extends StatefulWidget {
@@ -64,7 +67,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
       }
 
       _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
       );
       return true;
     } catch (e) {
@@ -157,7 +160,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
         return;
       }
 
-      final uri = Uri.parse('$baseUrl/user/');
+      final uri = Uri.parse('$baseUrl/user_report/');
       final request =
           http.MultipartRequest('POST', uri)
             ..headers['Authorization'] = 'Token $token'
@@ -234,6 +237,13 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
                 ],
               ),
               _buildchatbot(),
+
+              ElevatedButton(
+                onPressed: () {
+                  sendNotification("USER");
+                },
+                child: Text("test"),
+              ),
             ],
           ),
         ),

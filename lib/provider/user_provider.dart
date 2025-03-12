@@ -29,7 +29,10 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> setUser(
-      String username, String userType, String authToken) async {
+    String username,
+    String userType,
+    String authToken,
+  ) async {
     _username = username;
     _userType = userType;
     _authToken = authToken;
@@ -53,15 +56,10 @@ class UserProvider with ChangeNotifier {
     _authToken = null;
     _profileImagePath = null;
 
-    await _secureStorage.delete(
-      key: "TOKEN",
-    ); // Clears all stored credentials
-    await _secureStorage.delete(
-      key: "USER_TYPE",
-    );
-    await _secureStorage.delete(
-      key: "USERNAME",
-    );
+    await _secureStorage.delete(key: "TOKEN"); // Clears all stored credentials
+    await _secureStorage.delete(key: "USER_TYPE");
+    await _secureStorage.delete(key: "USERNAME");
+
     notifyListeners();
   }
 }
