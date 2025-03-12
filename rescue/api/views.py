@@ -55,6 +55,19 @@ def save_user_location(request):
                 }
             )
 
+        # Update last_location_update timestamp
+        user_profile.last_location_update = timezone.now()
+
+        # Get coordinates from request
+        latitude = float(request.data.get('latitude'))
+        longitude = float(request.data.get('longitude'))
+
+        # Create Point object
+        location = Point(longitude, latitude, srid=4326)
+
+        # Update location
+        user_profile.location = location
+        user_profile.save()
 
         # Handle POST request (Updating location)
         serializer = UserLocationSerializer(
@@ -73,9 +86,11 @@ def save_user_location(request):
             user=request.user, timestamp__lt=cleanup_time
         ).delete()
 
-        return Response(
-            {"status": "success", "message": "Location updated successfully"}
-        )
+        return Response({
+            "status": "success",
+            "message": "Location updated successfully",
+            "timestamp": user_profile.last_location_update
+        })
 
     except Exception as e:
         logger.error(f"Error saving location: {str(e)}")
