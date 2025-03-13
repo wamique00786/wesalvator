@@ -197,7 +197,7 @@ LOGGING = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-       'https://87d4-2409-40e3-38d-4492-d14d-28c4-33f0-ef4c.ngrok-free.app',
+       'https://9e12-2409-40e3-104b-1d22-1d7b-114f-b425-864.ngrok-free.app',
        'https://wesalvator.com',
        'https://www.wesalvator.com',# Add any other trusted origins here
    ]
