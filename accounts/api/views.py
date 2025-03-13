@@ -248,7 +248,9 @@ class UserReportView(generics.CreateAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if not request.data.get("latitude") or not request.data.get("longitude"):
+            latitude = request.data.get("latitude")
+            longitude = request.data.get("longitude")
+            if not latitude or not longitude:
                 return Response(
                     {"status": "error", "message": "Location coordinates are required"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -267,33 +269,45 @@ class UserReportView(generics.CreateAPIView):
 
             logger.info(f"Final Priority assigned: {priority}")
 
-            # Create the report with correct location SRID
+            # Create report location point
+            report_location = Point(float(longitude), float(latitude), srid=4326)
+
+            # Get active sessions to find logged-in volunteers
+            active_sessions = Session.objects.filter(expire_date__gte=timezone.now())
+            logged_in_user_ids = []
+
+            # Extract user IDs from valid sessions
+            for session in active_sessions:
+                try:
+                    data = session.get_decoded()
+                    uid = data.get('_auth_user_id')
+                    if uid:
+                        logged_in_user_ids.append(int(uid))
+                except:
+                    continue
+
+                # Find nearest logged-in volunteer within 10km
+            nearest_volunteer = (
+                UserProfile.objects.filter(
+                    user_type="VOLUNTEER",
+                    location__isnull=False,
+                    user__id__in=logged_in_user_ids  # Only get logged-in volunteers
+                )
+                .annotate(
+                    distance=Distance("location", report_location)
+                )
+                .filter(distance__lte=D(km=10))  # Within 10km radius
+                .order_by("distance")
+                .first()
+            )
+
             report = AnimalReport.objects.create(
                 user=request.user,
                 photo=request.FILES["photo"],
                 description=request.data["description"],
-                location=Point(
-                    float(request.data["longitude"]),
-                    float(request.data["latitude"]),
-                    srid=4326,
-                ),
+                location=report_location,
                 status="PENDING",
-                priority=priority,
-            )
-
-            # Ensure the report location SRID is correct
-            if report.location.srid != 4326:
-                report.location.transform(4326)
-
-            # **Find the nearest volunteer within 10km**
-            nearest_volunteer = (
-                UserProfile.objects.filter(
-                    user_type="VOLUNTEER", location__isnull=False
-                ).first()
-                # .annotate(distance=Distance("location", report.location))
-                # .filter(distance__lte=D(km=10))  # Ensure using km for distance
-                # .order_by("distance")
-                # .first()
+                priority=request.data.get("priority", "MEDIUM").strip().upper(),
             )
 
             if nearest_volunteer:
@@ -308,15 +322,27 @@ class UserReportView(generics.CreateAPIView):
                     {
                         "status": "success",
                         "message": "Report submitted and assigned to a volunteer.",
-                        "volunteer": {
-                            "name": nearest_volunteer.user.get_full_name()
-                            or nearest_volunteer.user.username,
-                            # "distance": f"{nearest_volunteer.distance.km:.2f} km",
+                        "assigned_volunteer": {
+                        "id": nearest_volunteer.id,
+                        "user": {
+                            "username": nearest_volunteer.user.username,
+                            "id": nearest_volunteer.user.id
                         },
-                        "priority": report.priority,
+                        "location": {
+                            "type": "Point",
+                            "coordinates": [
+                                nearest_volunteer.location.x,
+                                nearest_volunteer.location.y
+                            ]
+                        },
+                        "mobile_number": str(nearest_volunteer.mobile_number),
+                        "distance": {
+                            "text": f"{nearest_volunteer.distance.km:.2f} km away",
+                            "value": nearest_volunteer.distance.km
+                        }
                     },
-                    status=status.HTTP_201_CREATED,
-                )
+                    "priority": report.priority
+                }, status=status.HTTP_201_CREATED)
 
             # **If no volunteers, assign to admin**
             admin_profile = UserProfile.objects.filter(user_type="ADMIN").first()

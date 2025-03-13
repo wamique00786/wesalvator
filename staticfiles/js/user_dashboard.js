@@ -380,17 +380,8 @@ async function submitReport() {
         }).addTo(map);
         reportMarker.bindPopup("Reported Location").openPopup();
 
-        // Convert base64 to Blob
-        const base64Data = photoDataInput.value;
-        const byteCharacters = atob(base64Data.split(',')[1]);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const file = new File([byteArray], "captured_photo.jpg", { type: "image/jpeg" });
-
         const formData = new FormData();
+        const file = await convertBase64ToFile(photoDataInput.value, "captured_photo.jpg");
         formData.append('photo', file);
         formData.append('description', descriptionInput.value);
         formData.append('latitude',parseFloat(latitude)); // Ensure it's a number
@@ -400,8 +391,7 @@ async function submitReport() {
         // Fetch CSRF Token
         const csrfToken = getCookie('csrftoken');
         if (!csrfToken) {
-            console.error("CSRF token not found.");
-            return;
+            throw new Error("CSRF token not found.");
         }
 
         const response = await fetch('/api/user_report/', {
@@ -418,6 +408,7 @@ async function submitReport() {
         }
 
         const result = await response.json();
+        console.log('Report submission result:', result);
 
         if (result.assigned_volunteer) {
             // Show the assigned volunteer on the map
@@ -428,14 +419,28 @@ async function submitReport() {
             );
             
             // Start tracking the volunteer's movement
-            startVolunteerTracking(result.assigned_volunteer.id, parseFloat(latitude), parseFloat(longitude));
+            startVolunteerTracking(
+                result.assigned_volunteer.id,
+                parseFloat(latitude),
+                parseFloat(longitude)
+            );
+
+            alert(`Report submitted successfully. Volunteer ${result.assigned_volunteer.user.username} has been assigned.`);
+        } else {
+            alert('Report submitted, but no volunteer is currently available.');
         }
 
-        alert(result.message);
     } catch (error) {
         console.error('Error submitting report:', error);
         alert('Failed to submit report. Please try again.');
     }
+}
+
+// Helper function to convert base64 to File object
+async function convertBase64ToFile(base64String, filename) {
+    const response = await fetch(base64String);
+    const blob = await response.blob();
+    return new File([blob], filename, { type: 'image/jpeg' });
 }
 
 // Add these new functions for volunteer tracking
@@ -470,6 +475,7 @@ function showAssignedVolunteer(volunteer, reportLat, reportLng) {
             ${volunteer.user.username}<br>
             <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
             <strong>Distance:</strong> ${volunteer.distance.text}
+            <br><small>Volunteer is on the way!</small>
         </div>
     `;
     assignedVolunteerMarker.bindPopup(popupContent).openPopup();
@@ -490,10 +496,7 @@ function showAssignedVolunteer(volunteer, reportLat, reportLng) {
                 dashArray: '10, 10',  // Create dashed line
                 opacity: 0.7
             }
-        );
-        
-        // Add the line to the map
-        trackingLine.addTo(map);
+        ).addTo(map);
         
         // Store the report location for updates
         window.reportLocation = [reportLat, reportLng];
@@ -561,6 +564,7 @@ function startVolunteerTracking(volunteerId, reportLat, reportLng) {
                         ${data.user.username}<br>
                         <strong>Mobile:</strong> ${data.mobile_number}<br>
                         <strong>Distance:</strong> ${data.distance.text}
+                        <small>Volunteer is on the way!</small>
                     </div>
                 `;
                 assignedVolunteerMarker.setPopupContent(popupContent);
