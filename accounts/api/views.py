@@ -151,6 +151,13 @@ def save_admin_location(request):
             'message': str(e)
         }, status=500)
 
+class AllVolunteersView(generics.ListAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return UserProfile.objects.filter(user_type="VOLUNTEER")
+
 class NearbyVolunteersView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [AllowAny]
