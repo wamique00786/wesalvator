@@ -76,9 +76,12 @@ retakeButton.addEventListener('click', async () => {
 // Location handling
 let map;
 let userMarker;
-let userPopup = null;
-let allUserMarkers = {};
-const markerIcons = {
+let userLocationSaved = false; // To track if location has been saved to DB
+let assignedVolunteerMarker = null;
+let trackingLine = null;
+let reportMarker = null;
+
+const markerIcons = {   
     'USER': L.icon({
         iconUrl: '/static/images/user-marker.png',
         iconSize: [32, 32],
@@ -96,6 +99,12 @@ const markerIcons = {
         iconSize: [32, 32],
         iconAnchor: [16, 32],
         popupAnchor: [0, -32]
+    }),
+    'REPORT': L.icon({
+        iconUrl: '/static/images/marked.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
     })
 };
 
@@ -104,149 +113,80 @@ function initMap() {
     map = L.map('map').setView([0, 0], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    setTimeout(() => {
-        watchLocation();
-    }, 5000); // Small delay to allow map rendering
+    // Get user location and save to DB
+    getUserLocation();
 
+    // Fetch nearby volunteers & admins every 10 seconds
     setInterval(() => {
         if (userMarker) {
-            updateUserInfo(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
-            fetchNearbyVolunteers(userMarker.getLatLng().lat, userMarker.getLatLng().lng);
-                // Call function to fetch and display admins on the map
+            const { lat, lng } = userMarker.getLatLng();
+            fetchNearbyVolunteers(lat, lng);
             fetchAdmins();
         }
-    }, 10000); // Update every 10 seconds
+    }, 10000);
 }
 
-async function updateUserInfo(latitude, longitude) {
-    try {
-        // Ensure latitude & longitude are valid
-        if (latitude === undefined || longitude === undefined) {
-            console.error("Invalid coordinates received:", latitude, longitude);
-            return;
-        }
-
-        // Fetch CSRF Token
-        const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
-        const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
-        if (!csrfToken) {
-            console.error("CSRF token not found.");
-            return;
-        }
-
-        // Save location to database
-        const response = await fetch('/api/save-location/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
-            },
-            body: JSON.stringify({ latitude, longitude })
-        });
-
-        if (!response.ok) {
-            console.error("Failed to save location:", await response.text());
-            return;
-        }
-
-        // Get user info
-        const userInfoResponse = await fetch('/api/user-info/');
-        if (!userInfoResponse.ok) {
-            console.error("Failed to fetch user info:", await userInfoResponse.text());
-            return;
-        }
-        const userInfo = await userInfoResponse.json();
-
-        // Create or update marker
-        if (!userMarker) {
-            userMarker = L.marker([latitude, longitude], { icon: markerIcons['USER'] }).addTo(map);
-            map.setView([latitude, longitude], 13);
-        } else {
-            userMarker.setLatLng([latitude, longitude]);
-        }
-
-        // Show popup with only "u"
-        if (userInfo.user_type === 'USER') {
-            const popupContent = "YOU";
-            
-            // Check if popup exists, then update content
-            if (userMarker.getPopup()) {
-                userMarker.setPopupContent(popupContent);
-            } else {
-                userMarker.bindPopup(popupContent).openPopup();
-            }
-        }
-
-    } catch (error) {
-        console.error('Error updating user info:', error);
-    }
-}
-
-
-function watchLocation() {
+// Get user location & store it in the database once
+function getUserLocation() {
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            function (position) {
-                if (!position.coords || !position.coords.latitude || !position.coords.longitude) {
-                    console.error("Latitude or Longitude is missing!");
-                    return;
-                }
-
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
-                console.log("Live location:", latitude, longitude); // Debugging
 
-                // Store in cookies
+                console.log("User location:", latitude, longitude);
+
+                // Place a marker for the user
+                userMarker = L.marker([latitude, longitude], { icon: markerIcons['USER'] }).addTo(map)
+                    .bindPopup("Your Location").openPopup();
+
+                // Center the map on the user
+                map.setView([latitude, longitude], 13);
+
+                // Store location in cookies
                 document.cookie = `latitude=${latitude}; path=/`;
                 document.cookie = `longitude=${longitude}; path=/`;
+                console.log("Location stored in cookies.");
 
-                console.log("Latitude and Longitude stored in cookies.");
-
-                updateUserInfo(latitude, longitude);
+                // Save to database only once
+                if (!userLocationSaved) {
+                    saveUserLocation(latitude, longitude);
+                    userLocationSaved = true; // Prevent multiple API calls
+                }
             },
-            function (error) {
+            (error) => {
                 console.error("Error getting location:", error);
-                alert("Please enable location services.");
             },
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
     } else {
-        alert("Geolocation is not supported by this browser.");
+        console.error("Geolocation is not supported by this browser.");
     }
 }
 
-
-// Function to update user's location
-function updateLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function (position) {
-                const { latitude, longitude } = position.coords;
-                
-                const latitudeInput = document.getElementById('latitude');
-                const longitudeInput = document.getElementById('longitude');
-
-                if (latitudeInput && longitudeInput) {
-                    latitudeInput.value = latitude;
-                    longitudeInput.value = longitude;
-                } else {
-                    console.error("Latitude or Longitude input fields not found in the DOM.");
-                }
-
-                if (userMarker) {
-                    userMarker.setLatLng([latitude, longitude]);
-                    if (map) map.setView([latitude, longitude]);
-                } else {
-                    console.error("User marker is not defined.");
-                }
-            },
-            function (error) {
-                console.error("Error getting location:", error);
-                alert("Could not get your location");
-            }
-        );
-    }
+// Save user's location to the backend API
+function saveUserLocation(latitude, longitude) {
+// Fetch CSRF Token
+const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
+        if (!csrfToken) {
+        console.error("CSRF token not found.");
+            return;
+        }
+    fetch("/api/save-location/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            'X-CSRFToken': csrfToken,  // Include CSRF token in the request headers
+        },
+        body: JSON.stringify({ latitude, longitude })
+    })
+    .then(response => response.json())
+    .then(data => console.log("Location saved:", data))
+    .catch(error => console.error("Error saving location:", error));
 }
+
+
 
 
 // Function to fetch nearby volunteers
@@ -263,7 +203,8 @@ async function fetchNearbyVolunteers(latitude, longitude) {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                }
+                },
+                credentials: 'include'
             }
         );
 
@@ -272,6 +213,7 @@ async function fetchNearbyVolunteers(latitude, longitude) {
         }
 
         const data = await response.json();
+        console.log('Fetched volunteers:', data);  // Debug log
         
         // Clear existing volunteer markers
         if (window.volunteerMarkers) {
@@ -300,28 +242,38 @@ async function fetchNearbyVolunteers(latitude, longitude) {
                     (volunteer.user.first_name || volunteer.user.username) : 
                     'Volunteer';
 
-                marker.bindPopup(
-                    `<strong>${name}</strong><br>${distance} <br>
-                    <strong>Mobile No.</strong>${mobile_number}`
-                );
+                // Simplified popup content
+                marker.bindPopup(`
+                    <div class="volunteer-popup">
+                        <strong>${name}</strong><br>
+                        ${distance}<br>
+                        <strong>Mobile No:</strong> ${mobile_number}
+                    </div>
+                `);
                 window.volunteerMarkers.push(marker);
             }
         });
+
+        // Update volunteer count display if it exists
+        const volunteerCountElement = document.getElementById('volunteerCount');
+        if (volunteerCountElement) {
+            volunteerCountElement.textContent = `Available Volunteers: ${data.length}`;
+        }
 
     } catch (error) {
         console.error('Error fetching volunteers:', error);
     }
 }
 
-
-// Function to fetch and display all admins on the map
+// // Function to fetch and display all admins on the map
 async function fetchAdmins() {
     try {
         const response = await fetch('/api/admins/', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-            }
+            },
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -329,6 +281,7 @@ async function fetchAdmins() {
         }
 
         const data = await response.json();
+        console.log('Fetched admins:', data);
 
         // Remove existing admin markers
         if (window.adminMarkers) {
@@ -336,29 +289,20 @@ async function fetchAdmins() {
         }
         window.adminMarkers = [];
 
-        // Loop through each admin and add them to the map
-        data.forEach(admin => {
-            if (admin.location && admin.location.coordinates) {
-                const marker = L.marker([
-                    admin.location.coordinates[1], // latitude
-                    admin.location.coordinates[0]  // longitude
-                ], { icon: markerIcons['ADMIN'] }).addTo(map);
+        // Add a single marker for all admins at the static location
+        const staticLat = 18.5204;
+        const staticLng = 73.8567;
 
-                // Get admin name
-                const name = admin.user.first_name || admin.user.username || "Admin";
+        const marker = L.marker([staticLat, staticLng], {
+            icon: markerIcons['ADMIN']
+        }).addTo(map);
 
-                // Get distance text
-                const distance = admin.distance ? admin.distance.text : "Distance unknown";
-                const mobile_number = admin.mobile_number ? admin.mobile_number : "Not available";
-
-                // Bind popup with name and distance
-                marker.bindPopup(`<strong>${name}</strong><br>${distance}<br>
-                    <strong>Mobile No.</strong>${mobile_number}`);
-                
-                // Store marker in global array
-                window.adminMarkers.push(marker);
-            }
-        });
+        marker.bindPopup(`
+            <strong>Admin Office</strong><br>
+            <strong>Location:</strong> Pune, Maharashtra, India
+        `);
+        
+        window.adminMarkers.push(marker);
 
     } catch (error) {
         console.error('Error fetching admins:', error);
@@ -367,7 +311,7 @@ async function fetchAdmins() {
 
 
 
-// Function to send report to admin
+// // Function to send report to admin
 async function sendReportToAdmin() {
     const formData = new FormData();
     formData.append('photo', document.getElementById('imageData').value);  // Change to match the field name
@@ -413,6 +357,29 @@ async function submitReport() {
     }
 
     try {
+
+        // Clear existing tracking elements
+        if (assignedVolunteerMarker) {
+            assignedVolunteerMarker.remove();
+            assignedVolunteerMarker = null;
+        }
+        if (trackingLine) {
+            trackingLine.remove();
+            trackingLine = null;
+        }
+        if (window.volunteerTrackingInterval) {
+            clearInterval(window.volunteerTrackingInterval);
+        }
+
+        // Add report marker to the map
+        if (reportMarker) {
+            reportMarker.remove();
+        }
+        reportMarker = L.marker([parseFloat(latitude), parseFloat(longitude)], {
+            icon: markerIcons['REPORT']
+        }).addTo(map);
+        reportMarker.bindPopup("Reported Location").openPopup();
+
         // Convert base64 to Blob
         const base64Data = photoDataInput.value;
         const byteCharacters = atob(base64Data.split(',')[1]);
@@ -431,8 +398,7 @@ async function submitReport() {
         formData.append('priority', document.getElementById('priority').value || 'MEDIUM');
 
         // Fetch CSRF Token
-        const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
-        const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
+        const csrfToken = getCookie('csrftoken');
         if (!csrfToken) {
             console.error("CSRF token not found.");
             return;
@@ -452,11 +418,157 @@ async function submitReport() {
         }
 
         const result = await response.json();
+
+        if (result.assigned_volunteer) {
+            // Show the assigned volunteer on the map
+            showAssignedVolunteer(
+                result.assigned_volunteer,
+                parseFloat(latitude),
+                parseFloat(longitude)
+            );
+            
+            // Start tracking the volunteer's movement
+            startVolunteerTracking(result.assigned_volunteer.id, parseFloat(latitude), parseFloat(longitude));
+        }
+
         alert(result.message);
     } catch (error) {
         console.error('Error submitting report:', error);
         alert('Failed to submit report. Please try again.');
     }
+}
+
+// Add these new functions for volunteer tracking
+function showAssignedVolunteer(volunteer, reportLat, reportLng) {
+    console.log('Showing assigned volunteer:', volunteer);
+    console.log('Report location:', reportLat, reportLng);
+
+    // Remove existing assigned volunteer marker and tracking line
+    if (assignedVolunteerMarker) {
+        assignedVolunteerMarker.remove();
+    }
+    if (trackingLine) {
+        trackingLine.remove();
+    }
+
+    // Create marker for the assigned volunteer
+    const volunteerLatLng = [
+        volunteer.location.coordinates[1], 
+        volunteer.location.coordinates[0]
+    ];
+
+    // Create marker for the assigned volunteer
+    assignedVolunteerMarker = L.marker(volunteerLatLng, {
+        icon: markerIcons['VOLUNTEER'],
+        zIndexOffset: 1000
+    }).addTo(map);
+
+    // Create popup for the assigned volunteer
+    const popupContent = `
+        <div class="assigned-volunteer-popup">
+            <strong>Assigned Volunteer:</strong><br>
+            ${volunteer.user.username}<br>
+            <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
+            <strong>Distance:</strong> ${volunteer.distance.text}
+        </div>
+    `;
+    assignedVolunteerMarker.bindPopup(popupContent).openPopup();
+
+    // Ensure we have valid coordinates before creating the tracking line
+    if (reportLat && reportLng && volunteerLatLng[0] && volunteerLatLng[1]) {
+        console.log('Creating tracking line between:', volunteerLatLng, [reportLat, reportLng]);
+
+        // Draw line between volunteer and report location
+        trackingLine = L.polyline(
+            [
+                volunteerLatLng,
+                [reportLat, reportLng]
+            ],
+            {
+                color: 'red',
+                weight: 3,
+                dashArray: '10, 10',  // Create dashed line
+                opacity: 0.7
+            }
+        );
+        
+        // Add the line to the map
+        trackingLine.addTo(map);
+        
+        // Store the report location for updates
+        window.reportLocation = [reportLat, reportLng];
+
+        // Fit map bounds to show both points
+        const bounds = L.latLngBounds([
+            volunteerLatLng,
+            [reportLat, reportLng]
+        ]);
+        map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+        console.error('Invalid coordinates for tracking line');
+    }
+}
+
+// Function to update volunteer position
+function startVolunteerTracking(volunteerId, reportLat, reportLng) {
+    console.log('Starting volunteer tracking:', volunteerId);
+    // Clear any existing tracking interval
+    if (window.volunteerTrackingInterval) {
+        clearInterval(window.volunteerTrackingInterval);
+    }
+
+    // Set up tracking interval
+    window.volunteerTrackingInterval = setInterval(async () => {
+        try {
+            const response = await fetch(
+                `/api/volunteer/location/${volunteerId}/?reportLat=${reportLat}&reportLng=${reportLng}`
+            );
+            if (!response.ok) throw new Error('Failed to fetch volunteer location');
+            
+            const data = await response.json();
+            console.log('Received volunteer location update:', data);
+            
+            if (data.location && assignedVolunteerMarker) {
+                // Update volunteer marker position
+                const newLatLng = [
+                    data.location.coordinates[1],
+                    data.location.coordinates[0]
+                ];
+                assignedVolunteerMarker.setLatLng(newLatLng);
+
+                // Update tracking line
+                if (trackingLine) {
+                    trackingLine.setLatLngs([
+                        newLatLng,
+                        window.reportLocation
+                    ]);
+                } else {
+                    trackingLine = L.polyline(
+                        [newLatLng, window.reportLocation],
+                        {
+                            color: 'red',
+                            weight: 3,
+                            dashArray: '10, 10',
+                            opacity: 0.7
+                        }
+                    ).addTo(map);
+                }
+
+                // Update popup content with new distance
+                const popupContent = `
+                    <div class="assigned-volunteer-popup">
+                        <strong>Assigned Volunteer:</strong><br>
+                        ${data.user.username}<br>
+                        <strong>Mobile:</strong> ${data.mobile_number}<br>
+                        <strong>Distance:</strong> ${data.distance.text}
+                    </div>
+                `;
+                assignedVolunteerMarker.setPopupContent(popupContent);
+            }
+        } catch (error) {
+            console.error('Error updating volunteer location:', error);
+        }
+    }, 5000); // Update every 5 seconds
 }
 
 // Add event listener to the report form submission
@@ -465,5 +577,42 @@ document.getElementById('reportAnimalForm').addEventListener('submit', (event) =
     submitReport(); // Call the submitReport function
 });
 
-// Initialize map when page loads
-document.addEventListener('DOMContentLoaded', initMap);
+// Single event listener for initialization
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded');
+    
+    // Initialize map first
+    initMap();
+    
+    // Wait a short moment for map and user location to initialize
+    setTimeout(() => {
+        // Initial fetch of locations
+        if (userMarker) {
+            const { lat, lng } = userMarker.getLatLng();
+            console.log('Initial location fetch:', lat, lng);
+            
+            // Save initial user location
+            saveUserLocation(lat, lng);
+            
+            // Fetch initial volunteer and admin locations
+            fetchNearbyVolunteers(lat, lng);
+            fetchAdmins();
+        } else {
+            console.log('User marker not yet initialized');
+        }
+
+        // Set up periodic updates for all locations
+        setInterval(() => {
+            if (userMarker) {
+                const { lat, lng } = userMarker.getLatLng();
+                console.log('Updating locations:', lat, lng);
+                
+                // Update user location in database
+                saveUserLocation(lat, lng);
+                
+                // Fetch updated volunteer and admin locations
+                fetchNearbyVolunteers(lat, lng);
+            }
+        }, 10000); // Update every 10 seconds
+    }, 2000); // Wait 2 seconds for initialization
+});

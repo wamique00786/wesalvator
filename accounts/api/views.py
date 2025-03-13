@@ -10,6 +10,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+import json
+from django.contrib.sessions.models import Session
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -31,16 +33,83 @@ from ..serializers import (
 from .. import send_email as sm
 
 import logging
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate, login
-from rest_framework.authtoken.models import Token
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.measure import D
-
 
 logger = logging.getLogger(__name__)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_volunteer_location(request, volunteer_id):
+    try:
+        # Get the report location from query parameters
+        report_lat = request.GET.get('reportLat')
+        report_lng = request.GET.get('reportLng')
+
+        # Base query to get volunteer
+        volunteer_query = UserProfile.objects.filter(
+            id=volunteer_id,
+            user_type='VOLUNTEER'
+        )
+
+        # If we have report coordinates, calculate distance
+        if report_lat and report_lng:
+            report_location = Point(
+                float(report_lng),
+                float(report_lat),
+                srid=4326
+            )
+            
+            # Annotate with distance
+            volunteer = volunteer_query.annotate(
+                distance=Distance('location', report_location)
+            ).first()
+
+            if volunteer and volunteer.distance:
+                # Convert distance to kilometers
+                distance_km = volunteer.distance.km
+                distance_text = f"{distance_km:.2f} km away"
+            else:
+                distance_text = "Distance unknown"
+        else:
+            volunteer = volunteer_query.first()
+            distance_text = "Distance unknown"
+
+        if not volunteer:
+            return Response({
+                'status': 'error',
+                'message': 'Volunteer not found'
+            }, status=404)
+        
+        if not volunteer.location:
+            return Response({
+                'status': 'error',
+                'message': 'Volunteer location not available'
+            }, status=404)
+
+        return Response({
+            'status': 'success',
+            'user': {
+                'username': volunteer.user.username,
+                'id': volunteer.user.id
+            },
+            'location': {
+                'type': 'Point',
+                'coordinates': [
+                    volunteer.location.x,
+                    volunteer.location.y
+                ]
+            },
+            'mobile_number': str(volunteer.mobile_number),
+            'distance': {
+                'text': distance_text,
+                'value': distance_km if 'distance_km' in locals() else None
+            }
+        })
+
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -53,16 +122,9 @@ def save_admin_location(request):
                 'message': 'Only admin users can update their location'
             }, status=403)
 
-        # Get coordinates from request
-        latitude = float(request.data.get('latitude'))
-        longitude = float(request.data.get('longitude'))
-
-        # Validate coordinates
-        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-            return Response({
-                'status': 'error',
-                'message': 'Invalid coordinates'
-            }, status=400)
+        # Use static coordinates for admin
+        latitude = 18.5204
+        longitude = 73.8567
 
         # Create Point object
         location = Point(longitude, latitude, srid=4326)
@@ -75,7 +137,7 @@ def save_admin_location(request):
 
         return Response({
             'status': 'success',
-            'message': 'Admin location updated successfully',
+            'message': 'Admin location set to default coordinates',
             'data': {
                 'latitude': latitude,
                 'longitude': longitude,
@@ -83,11 +145,6 @@ def save_admin_location(request):
             }
         })
 
-    except (TypeError, ValueError) as e:
-        return Response({
-            'status': 'error',
-            'message': f'Invalid coordinates: {str(e)}'
-        }, status=400)
     except Exception as e:
         return Response({
             'status': 'error',
@@ -109,16 +166,32 @@ class NearbyVolunteersView(generics.ListAPIView):
             # Convert to float and create Point
             user_location = Point(float(lng), float(lat), srid=4326)  # longitude first, latitude second
 
-            # Query for nearby volunteers with distance annotation
+            # Get active sessions
+            active_sessions = Session.objects.filter(expire_date__gte=timezone.now())
+            uid_list = []
+
+            # Extract user IDs from valid sessions
+            for session in active_sessions:
+                try:
+                    data = session.get_decoded()
+                    uid = data.get('_auth_user_id')
+                    if uid:
+                        uid_list.append(uid)
+                except:
+                    continue
+
+            # Query for logged-in volunteers with distance annotation
             volunteers = (
                 UserProfile.objects.filter(
-                    user_type="VOLUNTEER", location__isnull=False
+                    user_type="VOLUNTEER",
+                    location__isnull=False,
+                    user__id__in=uid_list  # Only get volunteers who are logged in
                 )
-                .annotate(distance=Distance("location", user_location))  # Calculate distance
-                # .filter(distance__lte=D(km=10))  # 10km radius filter
-                .order_by("distance")  # Sort by nearest first
+                .annotate(distance=Distance("location", user_location))
+                .order_by("distance")
             )
 
+            print(f"Found {volunteers.count()} logged-in volunteers")
             return volunteers
 
         except (ValueError, TypeError) as e:
@@ -141,25 +214,16 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user  # Get the authenticated user
-        base_query = UserProfile.objects.filter(
-            user_type="ADMIN"
-        ).select_related('user')
+        # Get all admin profiles
+        admins = UserProfile.objects.filter(user_type="ADMIN").select_related('user')
         
-        # Ensure the user has a valid location
-        if not hasattr(user, "userprofile") or not user.userprofile.location:
-            return UserProfile.objects.filter(user_type="ADMIN").annotate(distance=None)
-
-        # Get the user's location as a Point
-        user_location = user.userprofile.location
-
-        # Query all admins with a valid location and annotate distance
-        admins = (
-            UserProfile.objects.filter(user_type="ADMIN", location__isnull=False)
-            .annotate(distance=Distance("location", user_location))
-            .order_by("distance")  # Optional: order by closest admins
-        )
-
+        # Set static location for all admins
+        static_point = Point(73.8567, 18.5204, srid=4326)  # longitude, latitude
+        
+        for admin in admins:
+            admin.location = static_point
+            admin.save()
+        
         return admins
 
 
