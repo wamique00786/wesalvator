@@ -443,8 +443,35 @@ async function convertBase64ToFile(base64String, filename) {
     return new File([blob], filename, { type: 'image/jpeg' });
 }
 
+// Add this new function to get route coordinates
+async function getRouteCoordinates(startLat, startLng, endLat, endLng) {
+    try {
+        // OSRM expects coordinates in longitude,latitude format
+        const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/` +
+            `${startLng},${startLat};${endLng},${endLat}` +
+            `?overview=full&geometries=geojson`
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to get route');
+        }
+
+        const data = await response.json();
+
+        if (data.code !== 'Ok' || !data.routes[0]) {
+            throw new Error('No route found');
+        }
+
+        return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } catch (error) {
+        console.error('OSRM routing error:', error);
+        throw error;
+    }
+}
+
 // Add these new functions for volunteer tracking
-function showAssignedVolunteer(volunteer, reportLat, reportLng) {
+async function showAssignedVolunteer(volunteer, reportLat, reportLng) {
     console.log('Showing assigned volunteer:', volunteer);
     console.log('Report location:', reportLat, reportLng);
 
@@ -468,47 +495,55 @@ function showAssignedVolunteer(volunteer, reportLat, reportLng) {
         zIndexOffset: 1000
     }).addTo(map);
 
-    // Create popup for the assigned volunteer
-    const popupContent = `
-        <div class="assigned-volunteer-popup">
-            <strong>Assigned Volunteer:</strong><br>
-            ${volunteer.user.username}<br>
-            <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
-            <strong>Distance:</strong> ${volunteer.distance.text}
-            <br><small>Volunteer is on the way!</small>
-        </div>
-    `;
-    assignedVolunteerMarker.bindPopup(popupContent).openPopup();
+    try {
+        // Get the route coordinates
+        const routeCoordinates = await getRouteCoordinates(
+            volunteerLatLng[0], volunteerLatLng[1],
+            reportLat, reportLng
+        );
 
-    // Ensure we have valid coordinates before creating the tracking line
-    if (reportLat && reportLng && volunteerLatLng[0] && volunteerLatLng[1]) {
-        console.log('Creating tracking line between:', volunteerLatLng, [reportLat, reportLng]);
+        // Create the route line with road path
+        trackingLine = L.polyline(routeCoordinates, {
+            color: '#FF4444',
+            weight: 4,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round',
+            dashArray: null // Remove dashed line style
+        }).addTo(map);
 
-        // Draw line between volunteer and report location
+        // Store the report location and route for updates
+        window.reportLocation = [reportLat, reportLng];
+        window.lastRouteCoordinates = routeCoordinates;
+
+        // Create popup for the assigned volunteer
+        const popupContent = `
+            <div class="assigned-volunteer-popup">
+                <strong>Assigned Volunteer:</strong><br>
+                ${volunteer.user.username}<br>
+                <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
+                <strong>Distance:</strong> ${volunteer.distance.text}
+                <br><small>Volunteer is on the way!</small>
+            </div>
+        `;
+        assignedVolunteerMarker.bindPopup(popupContent).openPopup();
+
+        // Fit map bounds to show the entire route
+        const bounds = L.latLngBounds(routeCoordinates);
+        map.fitBounds(bounds, { padding: [50, 50] });
+
+    } catch (error) {
+        console.error('Error creating route:', error);
+        // Fallback to straight line if routing fails
         trackingLine = L.polyline(
-            [
-                volunteerLatLng,
-                [reportLat, reportLng]
-            ],
+            [volunteerLatLng, [reportLat, reportLng]],
             {
-                color: 'red',
+                color: '#FF4444',
                 weight: 3,
-                dashArray: '10, 10',  // Create dashed line
+                dashArray: '10, 10',
                 opacity: 0.7
             }
         ).addTo(map);
-        
-        // Store the report location for updates
-        window.reportLocation = [reportLat, reportLng];
-
-        // Fit map bounds to show both points
-        const bounds = L.latLngBounds([
-            volunteerLatLng,
-            [reportLat, reportLng]
-        ]);
-        map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-        console.error('Invalid coordinates for tracking line');
     }
 }
 
@@ -539,35 +574,44 @@ function startVolunteerTracking(volunteerId, reportLat, reportLng) {
                 ];
                 assignedVolunteerMarker.setLatLng(newLatLng);
 
-                // Update tracking line
-                if (trackingLine) {
-                    trackingLine.setLatLngs([
-                        newLatLng,
-                        window.reportLocation
-                    ]);
-                } else {
-                    trackingLine = L.polyline(
-                        [newLatLng, window.reportLocation],
-                        {
-                            color: 'red',
-                            weight: 3,
-                            dashArray: '10, 10',
-                            opacity: 0.7
-                        }
-                    ).addTo(map);
-                }
+                // Update route
+                try {
+                    const newRouteCoordinates = await getRouteCoordinates(
+                        newLatLng[0], newLatLng[1],
+                        reportLat, reportLng
+                    );
 
-                // Update popup content with new distance
-                const popupContent = `
-                    <div class="assigned-volunteer-popup">
-                        <strong>Assigned Volunteer:</strong><br>
-                        ${data.user.username}<br>
-                        <strong>Mobile:</strong> ${data.mobile_number}<br>
-                        <strong>Distance:</strong> ${data.distance.text}
-                        <small>Volunteer is on the way!</small>
-                    </div>
-                `;
-                assignedVolunteerMarker.setPopupContent(popupContent);
+                    if (trackingLine) {
+                        // Smooth transition to new route
+                        const currentCoords = trackingLine.getLatLngs();
+                        if (JSON.stringify(currentCoords) !== JSON.stringify(newRouteCoordinates)) {
+                            trackingLine.setLatLngs(newRouteCoordinates);
+                        }
+                    } else {
+                        trackingLine = L.polyline(newRouteCoordinates, {
+                            color: '#FF4444',
+                            weight: 4,
+                            opacity: 0.8,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }).addTo(map);
+                    }
+
+                    // Update popup content with new distance
+                    const popupContent = `
+                        <div class="assigned-volunteer-popup">
+                            <strong>Assigned Volunteer:</strong><br>
+                            ${data.user.username}<br>
+                            <strong>Mobile:</strong> ${data.mobile_number}<br>
+                            <strong>Distance:</strong> ${data.distance.text}
+                            <small>Volunteer is on the way!</small>
+                        </div>
+                    `;
+                    assignedVolunteerMarker.setPopupContent(popupContent);
+
+                } catch (error) {
+                    console.error('Error updating route:', error);
+                }
             }
         } catch (error) {
             console.error('Error updating volunteer location:', error);

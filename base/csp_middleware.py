@@ -10,7 +10,7 @@ class ContentSecurityPolicyMiddleware:
             "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net "
             "https://translate.google.com https://translate.googleapis.com "
             "https://translate-pa.googleapis.com https://cdnjs.cloudflare.com "
-            "https://code.jquery.com 'unsafe-inline'; "  # ✅ Added code.jquery.com
+            "https://code.jquery.com 'unsafe-inline'; "  
             "style-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
             "https://www.gstatic.com https://fonts.googleapis.com 'unsafe-inline'; "
             "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com "
@@ -20,7 +20,8 @@ class ContentSecurityPolicyMiddleware:
             "object-src 'none'; "
             "connect-src 'self' data: https://nominatim.openstreetmap.org "
             "https://translate.googleapis.com https://translate-pa.googleapis.com "
-            "https://ipwhois.app https://ipapi.co http://ip-api.com; "
+            "https://ipwhois.app https://ipapi.co http://ip-api.com "
+            "https://router.project-osrm.org/route/v1/driving/; "
             "form-action 'self' data:; "
         )
 

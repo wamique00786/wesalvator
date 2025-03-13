@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, user_passes_test
 from ..models import (
     RescueTask,
-    VolunteerLocation,
     UserLocationHistory,
 )
 from accounts.models import UserProfile
@@ -170,47 +169,6 @@ def get_user_info(request):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
-
-
-def volunteer_locations(request):
-    volunteers = UserProfile.objects.filter(user_type="VOLUNTEER").exclude(
-        location__isnull=True
-    )
-    data = [
-        {
-            "username": volunteer.user.username,
-            "latitude": volunteer.location.y,
-            "longitude": volunteer.location.x,
-        }
-        for volunteer in volunteers
-    ]
-    return JsonResponse(data, safe=False)
-
-
-def calculate_distance(lat1, lon1, lat2, lon2):
-    # Convert latitude and longitude from degrees to radians
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-    # Haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    r = 6371  # Radius of earth in kilometers
-    return r * c
-
-
-def get_nearest_volunteers(animal_lat, animal_lon, radius_km=10):
-    # Create a point for the animal's location
-    animal_location = Point(animal_lon, animal_lat)  # Note: (longitude, latitude)
-
-    # Fetch volunteers within the specified radius
-    nearby_volunteers = UserProfile.objects.filter(
-        user_type="VOLUNTEER", location__distance_lte=(animal_location, D(km=radius_km))
-    )
-
-    return nearby_volunteers
-
 @login_required
 def rescued_animals_today(request):
     # Since the Animal model is removed, this view can be removed or modified
@@ -243,20 +201,6 @@ def update_volunteer_location(request):
         return Response({"status": "success"})
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=400)
-
-
-def get_volunteer_locations(request):
-    locations = []
-    for user in UserProfile.objects.filter(user_type="VOLUNTEER", location__isnull=False).all():
-        locations.append(
-            {
-                "id": user.id,
-                "name": user,
-                "location": user.location,
-            }
-        )
-    return JsonResponse(locations, safe=False)
-
 
 @login_required
 def complete_task(request, task_id):
