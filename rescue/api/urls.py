@@ -8,4 +8,5 @@ urlpatterns = [
     path('all-user-locations/', views.get_all_users_locations, name='get_all_users_locations'),
     path('save-location/', views.save_user_location),
     path('complete-task/<int:task_id>/', views.complete_task, name='complete_task'),
+    path('create_task/', views.create_task, name='create_task'),
 ]

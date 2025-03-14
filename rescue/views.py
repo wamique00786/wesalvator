@@ -1,5 +1,5 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import (
     AnimalReport,
@@ -70,11 +70,13 @@ def volunteer_dashboard(request):
 
         # Fetch tasks assigned to the volunteer
         available_tasks = RescueTask.objects.filter(
-            assigned_to=request.user, is_completed=False
-        )
+            assigned_to=request.user,
+            is_completed=False
+        ).order_by('-created_at')
+
         completed_tasks = RescueTask.objects.filter(
             assigned_to=request.user, is_completed=True
-        )
+        ).order_by('-created_at')
 
         print(f"Available tasks for {request.user.username}: {available_tasks}")
         print(f"Completed tasks for {request.user.username}: {completed_tasks}")

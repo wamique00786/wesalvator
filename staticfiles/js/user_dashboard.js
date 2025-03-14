@@ -108,22 +108,80 @@ const markerIcons = {
     })
 };
 
+// Add this helper function to calculate the zoom level for a 10km radius
+function getZoomLevelForRadius(lat, radius) {
+    // Earth's radius in kilometers
+    const R = 6371;
+    
+    // Convert radius from km to radians
+    const radiusRad = radius / R;
+    
+    // Calculate zoom level
+    // 360 is the total degrees in a circle
+    const zoom = Math.round(Math.log2(360 / (radiusRad * (180 / Math.PI) * 2)));
+    
+    return zoom;
+}
+
 // Initialize the map
 function initMap() {
-    map = L.map('map').setView([0, 0], 13);
+    map = L.map('map', {
+        minZoom: 3,
+        maxZoom: 18
+    }).setView([0, 0], 13);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Remove the "Leaflet" attribution
+    map.attributionControl.setPrefix('');
+
+    // Add custom recenter control
+    const recenterControl = L.Control.extend({
+        options: {
+            position: 'bottomleft'
+        },
+
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'custom-map-control');
+            container.innerHTML = '<i class="fas fa-crosshairs"></i>';
+            container.title = 'Recenter Map';
+            
+            container.onclick = function() {
+                recenterMap();
+            }
+            
+            return container;
+        }
+    });
+
+    map.addControl(new recenterControl());
 
     // Get user location and save to DB
     getUserLocation();
+}
 
-    // Fetch nearby volunteers & admins every 10 seconds
-    setInterval(() => {
-        if (userMarker) {
-            const { lat, lng } = userMarker.getLatLng();
-            fetchNearbyVolunteers(lat, lng);
-            fetchAdmins();
+// Function to recenter the map on user's location with 10km radius
+function recenterMap() {
+    if (userMarker) {
+        const pos = userMarker.getLatLng();
+        
+        // Remove existing radius circle if any
+        if (window.radiusCircle) {
+            window.radiusCircle.remove();
         }
-    }, 10000);
+        
+        // Create new 10km radius circle
+        window.radiusCircle = L.circle([pos.lat, pos.lng], {
+            radius: 10000, // 10km in meters
+            color: '#3388ff',
+            fillColor: '#3388ff',
+            fillOpacity: 0.1,
+            weight: 1
+        }).addTo(map);
+        
+        // Fit map to the radius circle bounds
+        map.fitBounds(window.radiusCircle.getBounds());
+    }
 }
 
 // Get user location & store it in the database once
@@ -137,11 +195,27 @@ function getUserLocation() {
                 console.log("User location:", latitude, longitude);
 
                 // Place a marker for the user
-                userMarker = L.marker([latitude, longitude], { icon: markerIcons['USER'] }).addTo(map)
-                    .bindPopup("Your Location").openPopup();
+                userMarker = L.marker([latitude, longitude], { 
+                    icon: markerIcons['USER']
+                }).addTo(map);
 
-                // Center the map on the user
-                map.setView([latitude, longitude], 13);
+                // Create a 10km radius circle
+                if (window.radiusCircle) {
+                    window.radiusCircle.remove();
+                }
+                window.radiusCircle = L.circle([latitude, longitude], {
+                    radius: 10000, // 10km in meters
+                    color: '#3388ff',
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(map);
+
+                // Set the map view to fit the radius
+                map.fitBounds(window.radiusCircle.getBounds());
+
+                // Add popup to user marker
+                userMarker.bindPopup("Your Location").openPopup();
 
                 // Store location in cookies
                 document.cookie = `latitude=${latitude}; path=/`;
@@ -151,13 +225,46 @@ function getUserLocation() {
                 // Save to database only once
                 if (!userLocationSaved) {
                     saveUserLocation(latitude, longitude);
-                    userLocationSaved = true; // Prevent multiple API calls
+                    userLocationSaved = true;
                 }
+
+                // Set up live location tracking
+                navigator.geolocation.watchPosition(
+                    (newPosition) => {
+                        const newLat = newPosition.coords.latitude;
+                        const newLng = newPosition.coords.longitude;
+
+                        // Update user marker position
+                        userMarker.setLatLng([newLat, newLng]);
+                        
+                        // Update radius circle position
+                        if (window.radiusCircle) {
+                            window.radiusCircle.setLatLng([newLat, newLng]);
+                        }
+
+                        // Update cookies and save new location
+                        document.cookie = `latitude=${newLat}; path=/`;
+                        document.cookie = `longitude=${newLng}; path=/`;
+                        saveUserLocation(newLat, newLng);
+                    },
+                    (error) => {
+                        console.error("Error tracking location:", error);
+                    },
+                    { 
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
             },
             (error) => {
                 console.error("Error getting location:", error);
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            { 
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
         );
     } else {
         console.error("Geolocation is not supported by this browser.");
@@ -411,6 +518,28 @@ async function submitReport() {
         console.log('Report submission result:', result);
 
         if (result.assigned_volunteer) {
+            // Create a task for the assigned volunteer
+            const taskResponse = await fetch('/api/create_task/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    title: 'Animal Rescue Request',
+                    description: descriptionInput.value,
+                    volunteer_id: result.assigned_volunteer.id,
+                    latitude: parseFloat(latitude),
+                    longitude: parseFloat(longitude),
+                    report_id: result.report_id
+                }),
+                credentials: "include"
+            });
+
+            if (!taskResponse.ok) {
+                console.error('Failed to create task for volunteer');
+            }
+            
             // Show the assigned volunteer on the map
             showAssignedVolunteer(
                 result.assigned_volunteer,

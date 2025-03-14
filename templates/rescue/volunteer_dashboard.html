@@ -3,6 +3,7 @@
 {% load static %}
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 {% endblock %}
 
@@ -12,18 +13,40 @@
 <div class="task-dashboard" style="display: flex; justify-content: space-between; margin-bottom: 40px;"> <!-- Added margin for spacing -->
     <div class="task-column">
         <h3>Available Tasks</h3>
-        <ul>
+        <ul class="list-group">
             {% for task in available_tasks %}
-                <li>
-                    <strong>{{ task.title }}</strong>
-                    <p>{{ task.description }}</p>
-                    <form method="POST" action="{% url 'complete_task' task.id %}">
-                        {% csrf_token %}
-                        <button type="submit">Mark as Completed</button>
-                    </form>
+                <li class="list-group-item">
+                    <div class="task-card">
+                        <h5 class="task-title">{{ task.title }}</h5>
+                        <p class="task-description">{{ task.description }}</p>
+                        <div class="task-details">
+                            {% if task.location %}
+                            <p><strong>Location:</strong> 
+                                <button class="btn btn-sm btn-primary" onclick="showLocationOnMap({{ task.location.y }}, {{ task.location.x }})">
+                                    View on Map
+                                </button>
+                            </p>
+                            {% endif %}
+                            <p><strong>Priority:</strong> 
+                                <span class="badge {% if task.priority == 'HIGH' %}bg-danger
+                                      {% elif task.priority == 'MEDIUM' %}bg-warning
+                                      {% else %}bg-info{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                            </p>
+                            <p><strong>Reported:</strong> {{ task.created_at|timesince }} ago</p>
+                            {% if task.report.photo %}
+                                <img src="{{ task.report.photo.url }}" alt="Report Photo" class="img-fluid mb-2" style="max-height: 200px;">
+                            {% endif %}
+                        </div>
+                        <form method="POST" action="{% url 'complete_task' task.id %}" class="task-actions">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">Mark as Completed</button>
+                        </form>
+                    </div>
                 </li>
             {% empty %}
-                <li>No available tasks.</li>
+                <li class="list-group-item">No available tasks.</li>
             {% endfor %}
         </ul>
     </div>
@@ -43,17 +66,14 @@
     </div>
 </div>
 
-<div id="map" style="height: 400px;"></div>  <!-- Ensure the map div has a height -->
+<div id="map" style="height: 400px;"></div>
 
 <script>
-let map, userMarkers = {};
+let map, volunteerMarker, adminMarker, reportMarker, trackingLine;
+let initialZoom = null;
+let radiusCircle = null;
+
 const markerIcons = {
-    'USER': L.icon({
-        iconUrl: '/static/images/user-marker.png',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
-    }),
     'VOLUNTEER': L.icon({
         iconUrl: '/static/images/volunteer-marker.png',
         iconSize: [32, 32],
@@ -65,84 +85,125 @@ const markerIcons = {
         iconSize: [32, 32],
         iconAnchor: [16, 32],
         popupAnchor: [0, -32]
+    }),
+    'REPORT': L.icon({
+        iconUrl: '/static/images/marked.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
     })
 };
 
 // Initialize the map
 function initMap() {
-    map = L.map('map').setView([27.531569, 80.748748], 10); // Default to a location
+    map = L.map('map', {
+        minZoom: 3,
+        maxZoom: 18
+    }).setView([27.531569, 80.748748], 13);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Start fetching all user locations every 10 seconds
-    setInterval(updateAllUsersLocations, 10000);
+    // Remove the "Leaflet" attribution
+    map.attributionControl.setPrefix('');
+
+    // Add custom recenter control
+    const recenterControl = L.Control.extend({
+        options: {
+            position: 'bottomleft'
+        },
+
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'custom-map-control');
+            container.innerHTML = '<i class="fas fa-crosshairs"></i>';
+            container.title = 'Recenter Map';
+            
+            container.onclick = function() {
+                recenterMap();
+            }
+            
+            return container;
+        }
+    });
+
+    map.addControl(new recenterControl());
+
+    // Add static admin marker
+    const adminLat = 18.5204;
+    const adminLng = 73.8567;
+    adminMarker = L.marker([adminLat, adminLng], {
+        icon: markerIcons['ADMIN']
+    }).addTo(map);
+    adminMarker.bindPopup('Admin Office<br>Pune, Maharashtra, India');
+
+    // Start watching volunteer location
+    watchVolunteerLocation();
 }
 
-// Fetch and update all users & admin locations
-async function updateAllUsersLocations() {
-    try {
-        const response = await fetch('/api/all-user-locations/');
-        const data = await response.json();
-        console.log("API Response Data:", data); // Debugging
-
-        if (data.status === 'success') {
-            data.users.forEach(user => {
-                const markerId = `user-${user.id}`;
-                const markerLatLng = [user.location.latitude, user.location.longitude];
-
-                // Create or update marker
-                if (userMarkers[markerId]) {
-                    userMarkers[markerId].setLatLng(markerLatLng);
-                    userMarkers[markerId].bindPopup(createPopupContent(user));
-                } else {
-                    const marker = L.marker(markerLatLng, { icon: markerIcons[user.user_type] || markerIcons['USER'] }).addTo(map);
-                    marker.bindPopup(createPopupContent(user));
-                    userMarkers[markerId] = marker;
-                }
-            });
-
-            // Auto-adjust map to fit all markers
-            const allMarkers = Object.values(userMarkers).map(marker => marker.getLatLng());
-            if (allMarkers.length) {
-                const bounds = L.latLngBounds(allMarkers);
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
+// Add recenter functionality
+function recenterMap() {
+    if (volunteerMarker) {
+        const pos = volunteerMarker.getLatLng();
+        
+        // Remove existing radius circle if any
+        if (radiusCircle) {
+            radiusCircle.remove();
         }
-    } catch (error) {
-        console.error('Error updating user locations:', error);
+        
+        // Create new 10km radius circle
+        radiusCircle = L.circle([pos.lat, pos.lng], {
+            radius: 10000, // 10km in meters
+            color: '#3388ff',
+            fillColor: '#3388ff',
+            fillOpacity: 0.1,
+            weight: 1
+        }).addTo(map);
+        
+        // Fit map to the radius circle bounds
+        map.fitBounds(radiusCircle.getBounds());
     }
 }
 
-// Watch volunteer's live location and update every 10 sec
+// Add event listener for initialization
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+});
+
+// Modify watchVolunteerLocation to include initial centering
 function watchVolunteerLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             async function (position) {
-                if (!position.coords || !position.coords.latitude || !position.coords.longitude) {
-                    console.error("Latitude or Longitude is missing!");
-                    return;
-                }
-
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
-                console.log("Volunteer live location:", latitude, longitude);
 
-                // Save in cookies
+                // Update volunteer marker
+                if (volunteerMarker) {
+                    volunteerMarker.setLatLng([latitude, longitude]);
+                } else {
+                    volunteerMarker = L.marker([latitude, longitude], {
+                        icon: markerIcons['VOLUNTEER']
+                    }).addTo(map);
+                    volunteerMarker.bindPopup('You (Volunteer)');
+                    
+                    // Initial centering when marker is first created
+                    recenterMap();
+                }
+
+                // Save location in cookies and database
                 document.cookie = `voln_latitude=${latitude}; path=/`;
                 document.cookie = `voln_longitude=${longitude}; path=/`;
-
-                // Update location in DB
                 await updateVolunteerLocation(latitude, longitude);
 
-                // Update marker on map
-                if (userMarkers['current-volunteer']) {
-                    userMarkers['current-volunteer'].setLatLng([latitude, longitude]);
-                } else {
-                    const volMarker = L.marker([latitude, longitude], { icon: markerIcons['VOLUNTEER'] }).addTo(map);
-                    volMarker.bindPopup("YOU (Volunteer)");
-                    userMarkers['current-volunteer'] = volMarker;
+                // Update tracking line if there's a report marker
+                if (reportMarker && trackingLine) {
+                    const reportLatLng = reportMarker.getLatLng();
+                    const routeCoords = await getRouteCoordinates(
+                        latitude, longitude,
+                        reportLatLng.lat, reportLatLng.lng
+                    );
+                    trackingLine.setLatLngs(routeCoords);
                 }
             },
             function (error) {
@@ -150,86 +211,101 @@ function watchVolunteerLocation() {
             },
             { enableHighAccuracy: true }
         );
-
-        // Update location every 10 sec
-        setInterval(async () => {
-            const latitude = getCookie('voln_latitude');
-            const longitude = getCookie('voln_longitude');
-
-            if (latitude && longitude) {
-                await updateVolunteerLocation(latitude, longitude);
-            }
-        }, 10000);
-    } else {
-        console.error('Geolocation is not supported by this browser.');
     }
 }
 
-// Send volunteer location to the backend
-async function updateVolunteerLocation(latitude, longitude) {
+// Get route coordinates using OSRM
+async function getRouteCoordinates(startLat, startLng, endLat, endLng) {
     try {
-        if (!latitude || !longitude) {
-            console.error("Invalid volunteer coordinates:", latitude, longitude);
-            return;
+        const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/` +
+            `${startLng},${startLat};${endLng},${endLat}` +
+            `?overview=full&geometries=geojson`
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to get route');
         }
 
-        // Fetch CSRF Token
-        const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
-        const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
+        const data = await response.json();
+        if (data.code !== 'Ok' || !data.routes[0]) {
+            throw new Error('No route found');
+        }
 
-        const headers = { 'Content-Type': 'application/json' };
-        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+        return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } catch (error) {
+        console.error('OSRM routing error:', error);
+        // Return direct line coordinates as fallback
+        return [[startLat, startLng], [endLat, endLng]];
+    }
+}
 
+// Update volunteer location in database
+async function updateVolunteerLocation(latitude, longitude) {
+    try {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const response = await fetch('/api/save-location/', {
             method: 'POST',
-            headers: headers,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
             body: JSON.stringify({ latitude, longitude })
         });
 
         if (!response.ok) {
-            console.error("Failed to save volunteer location:", await response.text());
-            return;
+            throw new Error('Failed to save location');
         }
-
-        console.log("Volunteer location updated successfully.");
     } catch (error) {
         console.error('Error updating volunteer location:', error);
     }
 }
 
-// Helper function to create user popup content
-function createPopupContent(user) {
-    return `
-        <div>
-            <strong>Username:</strong> ${user.username}<br>
-            <strong>Phone:</strong> ${user.phone}<br>
-            <strong>Location:</strong> (${user.location.latitude}, ${user.location.longitude})<br>
-            <strong>User Type:</strong> ${user.user_type}
-        </div>
-    `;
-}
-
-// Get CSRF token from cookies
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+// Show task location on map
+async function showLocationOnMap(lat, lng) {
+    // Remove existing report marker and tracking line
+    if (reportMarker) {
+        reportMarker.remove();
     }
-    return cookieValue;
+    if (trackingLine) {
+        trackingLine.remove();
+    }
+
+    // Add new report marker
+    reportMarker = L.marker([lat, lng], {
+        icon: markerIcons['REPORT']
+    }).addTo(map);
+    reportMarker.bindPopup('Reported Animal Location').openPopup();
+
+    // Create tracking line if volunteer marker exists
+    if (volunteerMarker) {
+        const volLatLng = volunteerMarker.getLatLng();
+        const routeCoords = await getRouteCoordinates(
+            volLatLng.lat, volLatLng.lng,
+            lat, lng
+        );
+        
+        trackingLine = L.polyline(routeCoords, {
+            color: '#FF4444',
+            weight: 4,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round'
+        }).addTo(map);
+    }
+
+    // Fit map bounds to show both markers
+    const bounds = L.latLngBounds([
+        [lat, lng],
+        volunteerMarker ? volunteerMarker.getLatLng() : [18.5204, 73.8567]
+    ]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+    // Scroll to map smoothly
+    document.getElementById('map').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+    });
 }
-
-// Initialize map and watch location when page loads
-document.addEventListener('DOMContentLoaded', function () {
-    initMap();
-    watchVolunteerLocation();
-});
-
 </script>
 {% endblock %}

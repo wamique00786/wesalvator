@@ -20,7 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.authtoken.models import Token
 
 from ..models import UserProfile
-from rescue.models import AnimalReport, AnimalReportImage
+from rescue.models import AnimalReport, AnimalReportImage, RescueTask
 from ..serializers import (
     UserProfileSerializer,
     AnimalReportSerializer,
@@ -286,7 +286,7 @@ class UserReportView(generics.CreateAPIView):
                 except:
                     continue
 
-                # Find nearest logged-in volunteer within 10km
+            # Find nearest logged-in volunteer within 10km
             nearest_volunteer = (
                 UserProfile.objects.filter(
                     user_type="VOLUNTEER",
@@ -307,13 +307,24 @@ class UserReportView(generics.CreateAPIView):
                 description=request.data["description"],
                 location=report_location,
                 status="PENDING",
-                priority=request.data.get("priority", "MEDIUM").strip().upper(),
+                priority=priority,
             )
 
             if nearest_volunteer:
                 report.assigned_to = nearest_volunteer.user
                 report.status = "ASSIGNED"
                 report.save()
+
+                # Create a rescue task for the volunteer
+                task = RescueTask.objects.create(
+                    title=f"Animal Rescue #{report.id}",
+                    description=report.description,
+                    assigned_to=nearest_volunteer.user,
+                    location=report_location,
+                    priority=priority,
+                    report=report,
+                    is_completed=False
+                )
 
                 # Send email to volunteer
                 sm.send_mail_to_volunteer(nearest_volunteer, report)
@@ -322,27 +333,30 @@ class UserReportView(generics.CreateAPIView):
                     {
                         "status": "success",
                         "message": "Report submitted and assigned to a volunteer.",
+                        "task_id": task.id,
                         "assigned_volunteer": {
-                        "id": nearest_volunteer.id,
-                        "user": {
-                            "username": nearest_volunteer.user.username,
-                            "id": nearest_volunteer.user.id
+                            "id": nearest_volunteer.id,
+                            "user": {
+                                "username": nearest_volunteer.user.username,
+                                "id": nearest_volunteer.user.id
+                            },
+                            "location": {
+                                "type": "Point",
+                                "coordinates": [
+                                    nearest_volunteer.location.x,
+                                    nearest_volunteer.location.y
+                                ]
+                            },
+                            "mobile_number": str(nearest_volunteer.mobile_number),
+                            "distance": {
+                                "text": f"{nearest_volunteer.distance.km:.2f} km away",
+                                "value": nearest_volunteer.distance.km
+                            }
                         },
-                        "location": {
-                            "type": "Point",
-                            "coordinates": [
-                                nearest_volunteer.location.x,
-                                nearest_volunteer.location.y
-                            ]
-                        },
-                        "mobile_number": str(nearest_volunteer.mobile_number),
-                        "distance": {
-                            "text": f"{nearest_volunteer.distance.km:.2f} km away",
-                            "value": nearest_volunteer.distance.km
-                        }
-                    },
-                    "priority": report.priority
-                }, status=status.HTTP_201_CREATED)
+                        "priority": report.priority
+                    }, 
+                    status=status.HTTP_201_CREATED
+                )
 
             # **If no volunteers, assign to admin**
             admin_profile = UserProfile.objects.filter(user_type="ADMIN").first()

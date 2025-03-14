@@ -57,7 +57,8 @@
                         <li class="nav-item">
                             <a class="nav-link {% if request.resolver_match.url_name == 'rescued_animals_today' %}active{% endif %}" href="{% url 'rescued_animals_today' %}">
                                 <i class="fas fa-paw me-1"></i>
-                                Rescued Today: {{ total_rescued_today }}
+                                Rescued Today: 
+                                <span class="badge bg-success">{{ total_rescued_today }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
