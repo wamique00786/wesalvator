@@ -1,0 +1,57 @@
+name: Flutter CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: gitea/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.1'
+          channel: 'stable'
+
+      - name: Install Java
+        uses: gitea/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Gradle
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+
+      - name: Clean project
+        run: flutter clean
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Ensure Gradle Wrapper Exists
+        run: |
+          cd android
+          if [ ! -f "./gradlew" ]; then
+            echo "Gradlew not found! Regenerating..."
+            gradle wrapper
+          fi
+          chmod +x ./gradlew
+
+      - name: Build APK
+        run: flutter build apk
+
+      - name: Upload APK
+        uses: gitea/upload-artifact@v1
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
