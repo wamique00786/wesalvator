@@ -3,24 +3,17 @@ name: Flutter CI
 on:
   push:
     branches:
-      - main  # Runs only when pushing to 'main'
+      - main
   pull_request:
     branches:
-      - main  # Runs only when PR is made to 'main'
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: gitea/checkout@v3
-        with:
-          ref: ${{ github.ref_name }}  # Ensures branch is maintained
-
-      - name: Copy Flutter Project
-        run: |
-          cp -r flutter-app-nitin flutter-project
-          ls -l flutter-project  # Verify files are copied
+        uses: actions/checkout@v3  # ✅ FIXED
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -29,7 +22,7 @@ jobs:
           channel: 'stable'
 
       - name: Install Java
-        uses: gitea/setup-java@v3
+        uses: actions/setup-java@v3  # ✅ FIXED
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -48,18 +41,13 @@ jobs:
       - name: Ensure Gradle Wrapper Exists
         run: |
           cd flutter-project/android
-          if [ ! -f "./gradlew" ]; then
-            echo "Gradlew not found! Regenerating..."
-            gradle wrapper
-          fi
-          chmod +x ./gradlew
+          chmod +x ./gradlew || ./gradlew wrapper  # ✅ FIXED
 
       - name: Build APK
         run: cd flutter-project && flutter build apk
 
       - name: Upload APK
-        uses: gitea/upload-artifact@v1
+        uses: actions/upload-artifact@v3  # ✅ FIXED
         with:
           name: app-release-apk
           path: flutter-project/build/app/outputs/flutter-apk/app-release.apk
-          #dh
