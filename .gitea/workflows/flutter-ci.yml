@@ -19,11 +19,11 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.1'
-          channel: 'stable'
+          flutter-version: '3.29.1'  # ✅ Latest version
+          channel: 'stable'          # ✅ Stable channel
 
       - name: Verify Flutter installation
-        run: flutter --version
+        run: flutter --version  # ✅ Ensures Flutter is correctly installed
 
       - name: Clean project
         run: flutter clean
@@ -32,7 +32,7 @@ jobs:
         run: flutter pub get
 
       - name: Ensure Gradle Wrapper is executable
-        run: chmod +x android/gradlew
+        run: chmod +x android/gradlew || ./android/gradlew wrapper
 
       - name: Build APK
         run: flutter build apk
