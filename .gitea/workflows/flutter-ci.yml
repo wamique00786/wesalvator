@@ -21,6 +21,7 @@ jobs:
         with:
           flutter-version: '3.29.1'  # ✅ Latest version
           channel: 'stable'          # ✅ Stable channel
+          architecture: 'x64'
 
       - name: Verify Flutter installation
         run: flutter --version  # ✅ Ensures Flutter is correctly installed
