@@ -15,12 +15,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3  # ✅ FIXED
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.1'
-          architecture: arm64
-          #
+      - name: Install Flutter Manually (ARM)
+        run: |
+          sudo apt update
+          sudo apt install -y curl unzip xz-utils git libglu1-mesa
+          curl -o flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.29.1-stable.tar.xz
+          tar -xf flutter.tar.xz
+          echo "FLUTTER_HOME=$PWD/flutter" >> $GITHUB_ENV
+          echo "$PWD/flutter/bin" >> $GITHUB_PATH
+          flutter --version
+
           
 
       - name: Install Java
