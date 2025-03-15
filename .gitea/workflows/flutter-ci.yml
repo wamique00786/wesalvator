@@ -1,8 +1,18 @@
+name: Flutter CI/CD
+
+on:
+  push:
+    branches:
+      - Flutter-app
+  pull_request:
+    branches:
+      - Flutter-app
+
 jobs:
   build:
     runs-on: ubuntu-latest  # ✅ Runs on GitHub's x86_64-hosted runner
     container:
-      image: ghcr.io/cirruslabs/flutter:3.19.1  # ✅ Official Flutter image for x86_64
+      image: ghcr.io/cirruslabs/flutter:3.19.1  # ✅ Official Flutter image (latest stable)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -11,16 +21,19 @@ jobs:
         run: flutter --version
 
       - name: Clean project
-        run: cd flutter-project && flutter clean
+        run: flutter clean
 
       - name: Get dependencies
-        run: cd flutter-project && flutter pub get
+        run: flutter pub get
+
+      - name: Ensure Gradle Wrapper is executable
+        run: chmod +x android/gradlew || ./android/gradlew wrapper
 
       - name: Build APK
-        run: cd flutter-project && flutter build apk
+        run: flutter build apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: app-release-apk
-          path: flutter-project/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
