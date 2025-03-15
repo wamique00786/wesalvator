@@ -10,21 +10,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # ✅ Runs on GitHub's x86_64-hosted runner
+    runs-on: ubuntu-latest  # ✅ Ensures a GitHub-hosted x86_64 runner
+    container:
+      image: ghcr.io/cirruslabs/flutter:3.29.1  # ✅ Official Flutter x86_64 image
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.1'  # ✅ Latest version
-          channel: 'stable'          # ✅ Stable channel
-          architecture: 'x64'
-
       - name: Verify Flutter installation
-        run: flutter --version  # ✅ Ensures Flutter is correctly installed
+        run: flutter --version
 
       - name: Clean project
         run: flutter clean
