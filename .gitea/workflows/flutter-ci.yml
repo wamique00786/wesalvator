@@ -1,18 +1,9 @@
-name: Flutter CI/CD
-
-on:
-  push:
-    branches:
-      - Flutter-app
-  pull_request:
-    branches:
-      - Flutter-app
-
 jobs:
   build:
-    runs-on: ubuntu-latest  # ✅ Ensures a GitHub-hosted x86_64 runner
+    runs-on: ubuntu-latest  # ✅ Runs on GitHub's x86_64-hosted runner
     container:
-      image: ghcr.io/cirruslabs/flutter:3.29.1  # ✅ Official Flutter x86_64 image
+      image: ghcr.io/cirruslabs/flutter:3.19.1
+      options: --platform=linux/amd64  # ✅ Forces x86_64 architecture
 
     steps:
       - name: Checkout repository
