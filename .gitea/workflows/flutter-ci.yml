@@ -11,29 +11,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cirruslabs/flutter:3.29.1  # ✅ Official Flutter Image
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3  # ✅ FIXED
-
-      - name: Install Flutter (ARM)
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.1'
-          
-
-
-          
+        uses: actions/checkout@v3
 
       - name: Install Java
-        uses: actions/setup-java@v3  # ✅ FIXED
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+        run: |
+          apt-get update
+          apt-get install -y openjdk-17-jdk
 
       - name: Install Gradle
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gradle
+          apt-get install -y gradle
 
       - name: Clean project
         run: cd flutter-project && flutter clean
@@ -41,16 +33,11 @@ jobs:
       - name: Get dependencies
         run: cd flutter-project && flutter pub get
 
-      - name: Ensure Gradle Wrapper Exists
-        run: |
-          cd flutter-project/android
-          chmod +x ./gradlew || ./gradlew wrapper  # ✅ FIXED
-
       - name: Build APK
         run: cd flutter-project && flutter build apk
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3  # ✅ FIXED
+        uses: actions/upload-artifact@v3
         with:
           name: app-release-apk
           path: flutter-project/build/app/outputs/flutter-apk/app-release.apk
