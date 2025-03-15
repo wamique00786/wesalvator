@@ -1,31 +1,14 @@
-name: Flutter CI
-
-on:
-  push:
-    branches:
-      - Flutter-app
-  pull_request:
-    branches:
-      - Flutter-app
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # ✅ Runs on GitHub's x86_64-hosted runner
     container:
-      image: ghcr.io/cirruslabs/flutter:3.29.1  # ✅ Official Flutter Image
-
+      image: ghcr.io/cirruslabs/flutter:3.19.1  # ✅ Official Flutter image for x86_64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Java
-        run: |
-          apt-get update
-          apt-get install -y openjdk-17-jdk
-
-      - name: Install Gradle
-        run: |
-          apt-get install -y gradle
+      - name: Verify Flutter installation
+        run: flutter --version
 
       - name: Clean project
         run: cd flutter-project && flutter clean
