@@ -43,13 +43,32 @@ class AnimalReportImage(models.Model):
         return f"Image for Report ID {self.report.id}" 
 
 class RescueTask(models.Model):
+    PRIORITY_CHOICES = (
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    )
+
     title = models.CharField(max_length=200)
     description = models.TextField()
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='tasks')
     is_completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    location = models.PointField(geography=True, null=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM')
+    report = models.OneToOneField(
+        AnimalReport, 
+        on_delete=models.CASCADE, 
+        related_name='rescue_task',
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return self.title
+        return f"{self.title} - {self.assigned_to.username if self.assigned_to else 'Unassigned'}"
     
 class VolunteerLocation(models.Model):
     volunteer = models.OneToOneField(User, on_delete=models.CASCADE)

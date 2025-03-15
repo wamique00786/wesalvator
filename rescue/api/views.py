@@ -12,7 +12,7 @@ from django.contrib.gis.measure import D
 from django.views.decorators.csrf import ensure_csrf_cookie
 from math import radians, sin, cos, sqrt, atan2
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 import logging
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -171,10 +171,17 @@ def get_user_info(request):
 
 @login_required
 def rescued_animals_today(request):
-    # Since the Animal model is removed, this view can be removed or modified
+    # Get today's date
+    today = timezone.now().date()
+    
+    # Get all completed tasks from today using is_completed and created_at
+    completed_tasks = RescueTask.objects.filter(
+        created_at__date=today,
+        is_completed=True
+    ).select_related('assigned_to', 'report').order_by('-created_at')
+
     return render(request, "rescue/rescued_animals_today.html", {
-        "rescued_animals": [],  # Return an empty list or modify as needed
-        "total_rescued_today": 0,
+        "completed_tasks": completed_tasks,
     })
 
 @api_view(["POST"])
@@ -201,6 +208,36 @@ def update_volunteer_location(request):
         return Response({"status": "success"})
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=400)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_task(request):
+    try:
+        data = request.data
+        volunteer_id = data.get('volunteer_id')
+        report_id = data.get('report_id')
+        
+        task = RescueTask.objects.create(
+            title=data.get('title'),
+            description=data.get('description'),
+            assigned_to_id=volunteer_id,
+            report_id=report_id,
+            location=Point(
+                float(data.get('longitude')),
+                float(data.get('latitude'))
+            ),
+            priority=data.get('priority', 'MEDIUM')
+        )
+        
+        return Response({
+            'status': 'success',
+            'task_id': task.id
+        })
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
 
 @login_required
 def complete_task(request, task_id):
@@ -208,21 +245,3 @@ def complete_task(request, task_id):
     task.is_completed = True
     task.save()
     return redirect("volunteer_dashboard")  # Redirect back to the dashboard
-
-
-@user_passes_test(lambda u: u.is_staff)  # Ensure only admins can access this view
-def add_task(request):
-    if request.method == "POST":
-        title = request.POST.get("title")
-        description = request.POST.get("description")
-        assigned_to = request.POST.get("assigned_to")  # Get the user ID from the form
-        task = RescueTask.objects.create(
-            title=title, description=description, assigned_to_id=assigned_to
-        )
-        return redirect("volunteer_dashboard")  # Redirect to the dashboard or task list
-
-    # Fetch all volunteers for the assignment form
-    volunteers = User.objects.filter(
-        is_staff=False
-    )  # Assuming non-staff are volunteers
-    return render(request, "rescue/add_task.html", {"volunteers": volunteers})

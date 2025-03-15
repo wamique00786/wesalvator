@@ -1,41 +1,78 @@
 <!-- rescue/templates/rescue/rescued_animals_today.html -->
 {% extends 'base/base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Animals Rescued Today</h2>
-    <p>Total Rescued Today: {{ total_rescued_today }}</p>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Species</th>
-                <th>Rescue Date</th>
-                <th>Status</th>
-                <th>Assigned To</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for animal in rescued_animals %}
-            <tr>
-                <td>{{ animal.name }}</td>
-                <td>{{ animal.species }}</td>
-                <td>{{ animal.rescue_date }}</td>
-                <td>{{ animal.status }}</td>
-                <td>
-                    {% if animal.assigned_to %}
-                        {{ animal.assigned_to.username }}
-                    {% else %}
-                        Unassigned
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5">No animals rescued today.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0 text-start">
+                <i class="fas fa-paw me-2"></i>Animals Rescued Today: {{ total_rescued_today }}
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if completed_tasks %}
+                <div class="row">
+                    {% for task in completed_tasks %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-start">
+                                    <h5 class="card-title">{{ task.title }}</h5>
+                                    <p class="card-text">{{ task.description }}</p>
+                                    {% if task.report.photo %}
+                                        <img src="{{ task.report.photo.url }}" alt="Rescued Animal" class="img-fluid mb-2" style="max-height: 200px;">
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <p class="mb-1">
+                                            <strong>Rescued by:</strong> 
+                                            {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Location:</strong>
+                                            <span class="text-muted">
+                                                {{ task.location.y|floatformat:6 }}, {{ task.location.x|floatformat:6 }}
+                                            </span>
+                                        </p>
+                                        <p class="mb-0">
+                                            <strong>Time:</strong>
+                                            <span class="text-muted">
+                                                {{ task.created_at|time:"g:i A" }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-start py-4">
+                    <i class="fas fa-info-circle fa-2x mb-3 text-muted"></i>
+                    <p class="lead mb-0">No animals have been rescued today yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<style>
+    .card {
+        transition: transform 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .card-title {
+        color: #2c3e50;
+    }
+    .text-muted {
+        color: #7f8c8d !important;
+    }
+    /* Ensure all text is left-aligned */
+    .text-start {
+        text-align: left !important;
+    }
+</style>
 {% endblock %}
