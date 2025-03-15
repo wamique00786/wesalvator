@@ -20,7 +20,7 @@ jobs:
         with:
           flutter-version: '3.29.1'
           architecture: arm64
-          channel: 'stable'
+          
 
       - name: Install Java
         uses: actions/setup-java@v3  # ✅ FIXED
