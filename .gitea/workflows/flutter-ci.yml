@@ -3,10 +3,10 @@ name: Flutter CI
 on:
   push:
     branches:
-      - main
+      - Flutter-app
   pull_request:
     branches:
-      - main
+      - Flutter-app
 
 jobs:
   build:
