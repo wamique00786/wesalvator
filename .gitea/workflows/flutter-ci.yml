@@ -11,11 +11,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # ✅ Runs on GitHub's x86_64-hosted runner
-    container:
-      image: ghcr.io/cirruslabs/flutter:3.19.1  # ✅ Official Flutter image (latest stable)
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.1'
+          channel: 'stable'
 
       - name: Verify Flutter installation
         run: flutter --version
@@ -27,7 +32,7 @@ jobs:
         run: flutter pub get
 
       - name: Ensure Gradle Wrapper is executable
-        run: chmod +x android/gradlew || ./android/gradlew wrapper
+        run: chmod +x android/gradlew
 
       - name: Build APK
         run: flutter build apk
