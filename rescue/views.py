@@ -125,7 +125,7 @@ def admin_dashboard(request):
         "volunteer_count": UserProfile.objects.filter(user_type="VOLUNTEER").count(),
         "volunteers": UserProfile.objects.filter(user_type="VOLUNTEER"),
     }
-    return render(request, "rescue/admin_dashboard.html", context)
+    return render(request, "rescue/org_dashboard.html", context)
 
 
 @login_required
@@ -136,7 +136,7 @@ def dashboard(request):
         if user_profile.user_type == "VOLUNTEER":
             return redirect("volunteer_dashboard")
         elif user_profile.user_type == "ADMIN":
-            return redirect("admin_dashboard")
+            return redirect("org_dashboard")
         else:
             return redirect("user_dashboard")
     except UserProfile.DoesNotExist:
