@@ -82,14 +82,16 @@
 
                     <!-- User type field -->
                     <div class="mb-3 text-start position-relative">
-                        <label for="user_type" class="form-label">User type</label>
+                        <label for="user_type" class="form-label">User Type</label>
                         <div class="position-relative">
-                        <select name="user_type" class="form-select" required id="user_type">
-                            <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
-                            <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
-                            <option value="ADMIN" title="Administrator: Has full access to manage the system.">Administrator</option>
-                        </select>
+                            <select name="user_type" class="form-select" required id="user_type">
+                                <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
+                                <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
+                                <option value="ADMIN" title="Organization: Can manage rescue operations, volunteers, and adoptions.">Organization</option>
+                            </select>
                         </div>
+                    </div>
+                    
                         {% if form.user_type.errors %}
                             <div class="text-danger">
                                 {{ form.user_type.errors }}
