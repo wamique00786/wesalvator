@@ -6,6 +6,6 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('user-dashboard/', views.user_dashboard, name='user_dashboard'),
     path('volunteer-dashboard/', views.volunteer_dashboard, name='volunteer_dashboard'),
-    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('organization-dashboard/', views.org_dashboard, name='organization_dashboard'),
     path('api/', include('rescue.api.urls'))
 ]

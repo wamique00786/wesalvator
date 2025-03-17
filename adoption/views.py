@@ -19,7 +19,7 @@ def adopt_animal(request):
 
 @login_required
 def add_adoptable_animal(request):
-    if request.user.userprofile.user_type != 'ADMIN':
+    if request.user.userprofile.user_type != 'ORGANIZATION':
         return render(request, 'adoption/not_authorized.html')
 
     if request.method == 'POST':
@@ -44,7 +44,7 @@ def adoptable_animal_detail(request, pk):
 def edit_adoptable_animal(request, pk):
     adoptable_animal = get_object_or_404(AdoptableAnimal, pk=pk)
     
-    if request.user.userprofile.user_type != 'ADMIN':
+    if request.user.userprofile.user_type != 'ORGANIZATION':
         return render(request, 'adoption/not_authorized.html')
 
     if request.method == 'POST':
