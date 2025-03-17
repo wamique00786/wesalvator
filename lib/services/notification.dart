@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 
@@ -8,8 +9,9 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 // Initialize local notifications
 class NotificationService {
   static Future<void> initialize() async {
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      'ws_logo',
+    ); // Use @mipmap instead of @drawable
 
     const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
@@ -21,24 +23,34 @@ class NotificationService {
   static Future<void> showNotification(String title, String body) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'channel_id',
-          'Channel Name',
+          'channel_id', // Channel ID
+          'Channel Name', // Channel Name
           importance: Importance.max,
           priority: Priority.high,
           showWhen: true,
+          // Add this line
         );
 
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
     );
 
-    await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails);
+    await flutterLocalNotificationsPlugin.show(
+      0, // Notification ID
+      title, // Title
+      body, // Body
+      platformDetails, // Platform-specific details
+      payload: jsonEncode({
+        'title': title,
+        'body': body,
+      }), // Add a meaningful payload
+    );
   }
 }
 
 // Subscribe to ntfy.sh notifications
 void subscribeToNotification(String topic) async {
-  print("🔔 Subscribing to topic: $topic");
+  log("Subscribing to topic: $topic");
   var url = Uri.parse('https://ntfy.sh/$topic/sse');
 
   try {
@@ -47,44 +59,54 @@ void subscribeToNotification(String topic) async {
     var response = await client.send(request);
 
     if (response.statusCode == 200) {
-      print("✅ Connected to SSE stream...");
+      log("Connected to SSE stream...");
 
       response.stream
           .transform(utf8.decoder)
+          .transform(const LineSplitter()) // Split the stream into lines
           .listen(
             (data) {
-              try {
-                var jsonData = jsonDecode(data.replaceFirst("data: ", ""));
-                if (jsonData["event"] == "message") {
-                  String message = jsonData["message"];
-                  print("📩 New Notification: $message");
+              if (data.startsWith("data: ")) {
+                try {
+                  var jsonData = jsonDecode(
+                    data.substring(6),
+                  ); // Remove "data: " prefix
+                  if (jsonData["event"] == "message") {
+                    String message = jsonData["message"];
+                    log("New Notification: $message");
 
-                  // Show local notification
-                  NotificationService.showNotification("New Message", message);
+                    // Show local notification
+                    NotificationService.showNotification(
+                      "New Message",
+                      message,
+                    );
+                  }
+                } catch (e) {
+                  log("Error parsing SSE event: $e");
                 }
-              } catch (e) {
-                print("⚠️ Error parsing SSE event: $e");
               }
             },
             onError: (error) {
-              print("❌ SSE Error: $error");
+              log("SSE Error: $error");
+              // Retry logic or reconnect logic can be added here
             },
             onDone: () {
-              print("🔌 Connection closed.");
+              log("Connection closed.");
+              // Retry logic or reconnect logic can be added here
             },
           );
     } else {
-      print("❌ Failed to subscribe: ${response.statusCode}");
+      log("Failed to subscribe: ${response.statusCode}");
     }
   } catch (e) {
-    print("⚠️ Error subscribing to topic: $e");
+    log("Error subscribing to topic: $e");
   }
 }
 
 // Send a test notification to ntfy.sh
 Future<void> sendNotification(String topic) async {
   var url = Uri.parse('https://ntfy.sh/$topic');
-  print("📤 Sending notification to topic: $topic");
+  log("Sending notification to topic: $topic");
 
   try {
     final response = await http.post(
@@ -94,12 +116,12 @@ Future<void> sendNotification(String topic) async {
     );
 
     if (response.statusCode == 200) {
-      print("✅ Notification sent successfully!");
+      log("Notification sent successfully!");
     } else {
-      print("❌ Failed to send notification: ${response.statusCode}");
-      print("Response: ${response.body}");
+      log("Failed to send notification: ${response.statusCode}");
+      log("Response: ${response.body}");
     }
   } catch (e) {
-    print("⚠️ Error sending notification: $e");
+    log("Error sending notification: $e");
   }
 }

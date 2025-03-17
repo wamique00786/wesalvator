@@ -199,7 +199,7 @@ class AuthService {
 
 void _handleGoogleLoginSuccess(BuildContext context, User user) {
   // Define phoneNumber outside if-else block
-  String phoneNumber = "+910000000000"; // Default dummy number
+  String phoneNumber = "+918787878787"; // Default dummy number
 
   if (user.phoneNumber != null) {
     phoneNumber = "+91${user.phoneNumber}"; // Assign actual phone number

@@ -8,12 +8,14 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:mime/mime.dart';
 import 'package:provider/provider.dart';
 import 'package:wesalvator/provider/user_provider.dart';
 import 'package:wesalvator/services/chatbot.dart';
 import 'package:wesalvator/services/compressImage.dart';
 import 'package:wesalvator/services/notification.dart';
+import 'package:wesalvator/user/mapSection.dart';
 import 'package:wesalvator/views/navbar.dart';
 
 class UserDashBoardScreen extends StatefulWidget {
@@ -25,13 +27,20 @@ class UserDashBoardScreen extends StatefulWidget {
 
 class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
   final List<XFile> _capturedImages = [];
-  Position? _currentPosition;
+  Position? currentPosition;
   String _selectedPriority = 'MEDIUM';
   final TextEditingController _descriptionController = TextEditingController();
   bool _isSubmitting = false;
   bool _isLoadingLocation = false;
   final _storage = const FlutterSecureStorage();
   final _imagePicker = ImagePicker();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    _fetchLocation();
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -66,7 +75,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
         return false;
       }
 
-      _currentPosition = await Geolocator.getCurrentPosition(
+      currentPosition = await Geolocator.getCurrentPosition(
         locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
       );
       return true;
@@ -86,7 +95,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
       return;
     }
 
-    if (_currentPosition == null) {
+    if (currentPosition == null) {
       _showSnackbar('Getting your location...');
       final hasLocation = await _fetchLocation();
       if (!hasLocation) return;
@@ -142,7 +151,7 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
       return;
     }
 
-    if (_currentPosition == null) {
+    if (currentPosition == null) {
       _showSnackbar('Getting your location...');
       final hasLocation = await _fetchLocation();
       if (!hasLocation) return;
@@ -167,8 +176,8 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
             ..headers['Accept'] = 'application/json'
             ..fields['description'] = description
             ..fields['priority'] = _selectedPriority
-            ..fields['latitude'] = _currentPosition!.latitude.toString()
-            ..fields['longitude'] = _currentPosition!.longitude.toString();
+            ..fields['latitude'] = currentPosition!.latitude.toString()
+            ..fields['longitude'] = currentPosition!.longitude.toString();
 
       // Process images in parallel
       final compressedImages = await Future.wait(
@@ -213,6 +222,19 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
     });
   }
 
+  Position dummyPosition = Position(
+    latitude: 51.509364,
+    longitude: -0.128928,
+    timestamp: DateTime.now(),
+    accuracy: 0.0,
+    altitude: 0.0,
+    heading: 0.0,
+    speed: 0.0,
+    speedAccuracy: 0.0,
+    altitudeAccuracy: 0.0,
+    headingAccuracy: 0.0,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,6 +249,24 @@ class _UserDashBoardScreenState extends State<UserDashBoardScreen> {
             children: [
               Column(
                 children: [
+                  // Only show MapSection when we have location
+                  if (currentPosition != null)
+                    Mapsection(userPosition: currentPosition!)
+                  else
+                    Card(
+                      child: Container(
+                        height: 240,
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        child:
+                            _isLoadingLocation
+                                ? const CircularProgressIndicator()
+                                : ElevatedButton(
+                                  onPressed: _fetchLocation,
+                                  child: const Text('Enable Location'),
+                                ),
+                      ),
+                    ),
                   _buildCameraSection(),
                   const SizedBox(height: 20),
                   if (_capturedImages.isNotEmpty) ...[
