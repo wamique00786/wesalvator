@@ -108,22 +108,80 @@ const markerIcons = {
     })
 };
 
+// Add this helper function to calculate the zoom level for a 10km radius
+function getZoomLevelForRadius(lat, radius) {
+    // Earth's radius in kilometers
+    const R = 6371;
+    
+    // Convert radius from km to radians
+    const radiusRad = radius / R;
+    
+    // Calculate zoom level
+    // 360 is the total degrees in a circle
+    const zoom = Math.round(Math.log2(360 / (radiusRad * (180 / Math.PI) * 2)));
+    
+    return zoom;
+}
+
 // Initialize the map
 function initMap() {
-    map = L.map('map').setView([0, 0], 13);
+    map = L.map('map', {
+        minZoom: 3,
+        maxZoom: 18
+    }).setView([0, 0], 13);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Remove the "Leaflet" attribution
+    map.attributionControl.setPrefix('');
+
+    // Add custom recenter control
+    const recenterControl = L.Control.extend({
+        options: {
+            position: 'bottomleft'
+        },
+
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'custom-map-control');
+            container.innerHTML = '<i class="fas fa-crosshairs"></i>';
+            container.title = 'Recenter Map';
+            
+            container.onclick = function() {
+                recenterMap();
+            }
+            
+            return container;
+        }
+    });
+
+    map.addControl(new recenterControl());
 
     // Get user location and save to DB
     getUserLocation();
+}
 
-    // Fetch nearby volunteers & admins every 10 seconds
-    setInterval(() => {
-        if (userMarker) {
-            const { lat, lng } = userMarker.getLatLng();
-            fetchNearbyVolunteers(lat, lng);
-            fetchAdmins();
+// Function to recenter the map on user's location with 10km radius
+function recenterMap() {
+    if (userMarker) {
+        const pos = userMarker.getLatLng();
+        
+        // Remove existing radius circle if any
+        if (window.radiusCircle) {
+            window.radiusCircle.remove();
         }
-    }, 10000);
+        
+        // Create new 10km radius circle
+        window.radiusCircle = L.circle([pos.lat, pos.lng], {
+            radius: 10000, // 10km in meters
+            color: '#3388ff',
+            fillColor: '#3388ff',
+            fillOpacity: 0.1,
+            weight: 1
+        }).addTo(map);
+        
+        // Fit map to the radius circle bounds
+        map.fitBounds(window.radiusCircle.getBounds());
+    }
 }
 
 // Get user location & store it in the database once
@@ -137,11 +195,27 @@ function getUserLocation() {
                 console.log("User location:", latitude, longitude);
 
                 // Place a marker for the user
-                userMarker = L.marker([latitude, longitude], { icon: markerIcons['USER'] }).addTo(map)
-                    .bindPopup("Your Location").openPopup();
+                userMarker = L.marker([latitude, longitude], { 
+                    icon: markerIcons['USER']
+                }).addTo(map);
 
-                // Center the map on the user
-                map.setView([latitude, longitude], 13);
+                // Create a 10km radius circle
+                if (window.radiusCircle) {
+                    window.radiusCircle.remove();
+                }
+                window.radiusCircle = L.circle([latitude, longitude], {
+                    radius: 10000, // 10km in meters
+                    color: '#3388ff',
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(map);
+
+                // Set the map view to fit the radius
+                map.fitBounds(window.radiusCircle.getBounds());
+
+                // Add popup to user marker
+                userMarker.bindPopup("Your Location").openPopup();
 
                 // Store location in cookies
                 document.cookie = `latitude=${latitude}; path=/`;
@@ -151,13 +225,46 @@ function getUserLocation() {
                 // Save to database only once
                 if (!userLocationSaved) {
                     saveUserLocation(latitude, longitude);
-                    userLocationSaved = true; // Prevent multiple API calls
+                    userLocationSaved = true;
                 }
+
+                // Set up live location tracking
+                navigator.geolocation.watchPosition(
+                    (newPosition) => {
+                        const newLat = newPosition.coords.latitude;
+                        const newLng = newPosition.coords.longitude;
+
+                        // Update user marker position
+                        userMarker.setLatLng([newLat, newLng]);
+                        
+                        // Update radius circle position
+                        if (window.radiusCircle) {
+                            window.radiusCircle.setLatLng([newLat, newLng]);
+                        }
+
+                        // Update cookies and save new location
+                        document.cookie = `latitude=${newLat}; path=/`;
+                        document.cookie = `longitude=${newLng}; path=/`;
+                        saveUserLocation(newLat, newLng);
+                    },
+                    (error) => {
+                        console.error("Error tracking location:", error);
+                    },
+                    { 
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
             },
             (error) => {
                 console.error("Error getting location:", error);
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            { 
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
         );
     } else {
         console.error("Geolocation is not supported by this browser.");
@@ -380,17 +487,8 @@ async function submitReport() {
         }).addTo(map);
         reportMarker.bindPopup("Reported Location").openPopup();
 
-        // Convert base64 to Blob
-        const base64Data = photoDataInput.value;
-        const byteCharacters = atob(base64Data.split(',')[1]);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const file = new File([byteArray], "captured_photo.jpg", { type: "image/jpeg" });
-
         const formData = new FormData();
+        const file = await convertBase64ToFile(photoDataInput.value, "captured_photo.jpg");
         formData.append('photo', file);
         formData.append('description', descriptionInput.value);
         formData.append('latitude',parseFloat(latitude)); // Ensure it's a number
@@ -400,8 +498,7 @@ async function submitReport() {
         // Fetch CSRF Token
         const csrfToken = getCookie('csrftoken');
         if (!csrfToken) {
-            console.error("CSRF token not found.");
-            return;
+            throw new Error("CSRF token not found.");
         }
 
         const response = await fetch('/api/user_report/', {
@@ -418,8 +515,31 @@ async function submitReport() {
         }
 
         const result = await response.json();
+        console.log('Report submission result:', result);
 
         if (result.assigned_volunteer) {
+            // Create a task for the assigned volunteer
+            const taskResponse = await fetch('/api/create_task/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    title: 'Animal Rescue Request',
+                    description: descriptionInput.value,
+                    volunteer_id: result.assigned_volunteer.id,
+                    latitude: parseFloat(latitude),
+                    longitude: parseFloat(longitude),
+                    report_id: result.report_id
+                }),
+                credentials: "include"
+            });
+
+            if (!taskResponse.ok) {
+                console.error('Failed to create task for volunteer');
+            }
+            
             // Show the assigned volunteer on the map
             showAssignedVolunteer(
                 result.assigned_volunteer,
@@ -428,18 +548,59 @@ async function submitReport() {
             );
             
             // Start tracking the volunteer's movement
-            startVolunteerTracking(result.assigned_volunteer.id, parseFloat(latitude), parseFloat(longitude));
+            startVolunteerTracking(
+                result.assigned_volunteer.id,
+                parseFloat(latitude),
+                parseFloat(longitude)
+            );
+
+            alert(`Report submitted successfully. Volunteer ${result.assigned_volunteer.user.username} has been assigned.`);
+        } else {
+            alert('Report submitted, but no volunteer is currently available.');
         }
 
-        alert(result.message);
     } catch (error) {
         console.error('Error submitting report:', error);
         alert('Failed to submit report. Please try again.');
     }
 }
 
+// Helper function to convert base64 to File object
+async function convertBase64ToFile(base64String, filename) {
+    const response = await fetch(base64String);
+    const blob = await response.blob();
+    return new File([blob], filename, { type: 'image/jpeg' });
+}
+
+// Add this new function to get route coordinates
+async function getRouteCoordinates(startLat, startLng, endLat, endLng) {
+    try {
+        // OSRM expects coordinates in longitude,latitude format
+        const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/` +
+            `${startLng},${startLat};${endLng},${endLat}` +
+            `?overview=full&geometries=geojson`
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to get route');
+        }
+
+        const data = await response.json();
+
+        if (data.code !== 'Ok' || !data.routes[0]) {
+            throw new Error('No route found');
+        }
+
+        return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    } catch (error) {
+        console.error('OSRM routing error:', error);
+        throw error;
+    }
+}
+
 // Add these new functions for volunteer tracking
-function showAssignedVolunteer(volunteer, reportLat, reportLng) {
+async function showAssignedVolunteer(volunteer, reportLat, reportLng) {
     console.log('Showing assigned volunteer:', volunteer);
     console.log('Report location:', reportLat, reportLng);
 
@@ -463,49 +624,55 @@ function showAssignedVolunteer(volunteer, reportLat, reportLng) {
         zIndexOffset: 1000
     }).addTo(map);
 
-    // Create popup for the assigned volunteer
-    const popupContent = `
-        <div class="assigned-volunteer-popup">
-            <strong>Assigned Volunteer:</strong><br>
-            ${volunteer.user.username}<br>
-            <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
-            <strong>Distance:</strong> ${volunteer.distance.text}
-        </div>
-    `;
-    assignedVolunteerMarker.bindPopup(popupContent).openPopup();
+    try {
+        // Get the route coordinates
+        const routeCoordinates = await getRouteCoordinates(
+            volunteerLatLng[0], volunteerLatLng[1],
+            reportLat, reportLng
+        );
 
-    // Ensure we have valid coordinates before creating the tracking line
-    if (reportLat && reportLng && volunteerLatLng[0] && volunteerLatLng[1]) {
-        console.log('Creating tracking line between:', volunteerLatLng, [reportLat, reportLng]);
+        // Create the route line with road path
+        trackingLine = L.polyline(routeCoordinates, {
+            color: '#FF4444',
+            weight: 4,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round',
+            dashArray: null // Remove dashed line style
+        }).addTo(map);
 
-        // Draw line between volunteer and report location
+        // Store the report location and route for updates
+        window.reportLocation = [reportLat, reportLng];
+        window.lastRouteCoordinates = routeCoordinates;
+
+        // Create popup for the assigned volunteer
+        const popupContent = `
+            <div class="assigned-volunteer-popup">
+                <strong>Assigned Volunteer:</strong><br>
+                ${volunteer.user.username}<br>
+                <strong>Mobile:</strong> ${volunteer.mobile_number}<br>
+                <strong>Distance:</strong> ${volunteer.distance.text}
+                <br><small>Volunteer is on the way!</small>
+            </div>
+        `;
+        assignedVolunteerMarker.bindPopup(popupContent).openPopup();
+
+        // Fit map bounds to show the entire route
+        const bounds = L.latLngBounds(routeCoordinates);
+        map.fitBounds(bounds, { padding: [50, 50] });
+
+    } catch (error) {
+        console.error('Error creating route:', error);
+        // Fallback to straight line if routing fails
         trackingLine = L.polyline(
-            [
-                volunteerLatLng,
-                [reportLat, reportLng]
-            ],
+            [volunteerLatLng, [reportLat, reportLng]],
             {
-                color: 'red',
+                color: '#FF4444',
                 weight: 3,
-                dashArray: '10, 10',  // Create dashed line
+                dashArray: '10, 10',
                 opacity: 0.7
             }
-        );
-        
-        // Add the line to the map
-        trackingLine.addTo(map);
-        
-        // Store the report location for updates
-        window.reportLocation = [reportLat, reportLng];
-
-        // Fit map bounds to show both points
-        const bounds = L.latLngBounds([
-            volunteerLatLng,
-            [reportLat, reportLng]
-        ]);
-        map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-        console.error('Invalid coordinates for tracking line');
+        ).addTo(map);
     }
 }
 
@@ -536,34 +703,44 @@ function startVolunteerTracking(volunteerId, reportLat, reportLng) {
                 ];
                 assignedVolunteerMarker.setLatLng(newLatLng);
 
-                // Update tracking line
-                if (trackingLine) {
-                    trackingLine.setLatLngs([
-                        newLatLng,
-                        window.reportLocation
-                    ]);
-                } else {
-                    trackingLine = L.polyline(
-                        [newLatLng, window.reportLocation],
-                        {
-                            color: 'red',
-                            weight: 3,
-                            dashArray: '10, 10',
-                            opacity: 0.7
-                        }
-                    ).addTo(map);
-                }
+                // Update route
+                try {
+                    const newRouteCoordinates = await getRouteCoordinates(
+                        newLatLng[0], newLatLng[1],
+                        reportLat, reportLng
+                    );
 
-                // Update popup content with new distance
-                const popupContent = `
-                    <div class="assigned-volunteer-popup">
-                        <strong>Assigned Volunteer:</strong><br>
-                        ${data.user.username}<br>
-                        <strong>Mobile:</strong> ${data.mobile_number}<br>
-                        <strong>Distance:</strong> ${data.distance.text}
-                    </div>
-                `;
-                assignedVolunteerMarker.setPopupContent(popupContent);
+                    if (trackingLine) {
+                        // Smooth transition to new route
+                        const currentCoords = trackingLine.getLatLngs();
+                        if (JSON.stringify(currentCoords) !== JSON.stringify(newRouteCoordinates)) {
+                            trackingLine.setLatLngs(newRouteCoordinates);
+                        }
+                    } else {
+                        trackingLine = L.polyline(newRouteCoordinates, {
+                            color: '#FF4444',
+                            weight: 4,
+                            opacity: 0.8,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }).addTo(map);
+                    }
+
+                    // Update popup content with new distance
+                    const popupContent = `
+                        <div class="assigned-volunteer-popup">
+                            <strong>Assigned Volunteer:</strong><br>
+                            ${data.user.username}<br>
+                            <strong>Mobile:</strong> ${data.mobile_number}<br>
+                            <strong>Distance:</strong> ${data.distance.text}
+                            <small>Volunteer is on the way!</small>
+                        </div>
+                    `;
+                    assignedVolunteerMarker.setPopupContent(popupContent);
+
+                } catch (error) {
+                    console.error('Error updating route:', error);
+                }
             }
         } catch (error) {
             console.error('Error updating volunteer location:', error);

@@ -71,6 +71,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 'chatbot.context_processors.chat_widget_context',
+                'rescue.context_processors.rescued_animals_count',
             ],
         },
     },
@@ -161,9 +162,6 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 #GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
 GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
-
-
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -174,8 +172,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
-
-#CSP_CONNECT_SRC = ["'self'", 'https://nominatim.openstreetmap.org']
 
 CSRF_COOKIE_SECURE = True  # for HTTPS sites
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
@@ -197,12 +193,10 @@ LOGGING = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-       'https://87d4-2409-40e3-38d-4492-d14d-28c4-33f0-ef4c.ngrok-free.app',
+       'https://3827-2409-40e3-102d-7535-357c-ea9d-4498-2ed9.ngrok-free.app',
        'https://wesalvator.com',
        'https://www.wesalvator.com',# Add any other trusted origins here
    ]
 
 SESSION_COOKIE_AGE = 300  # 5 minutes in seconds
 SESSION_SAVE_EVERY_REQUEST = True  # Reset the session expiry time on every request
-
-

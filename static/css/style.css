@@ -538,3 +538,36 @@ textarea.form-control {
   #google_translate_element span{
       color: white !important;
   }
+
+  .task-card {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.task-title {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.task-description {
+    color: #34495e;
+    margin-bottom: 15px;
+}
+
+.task-details {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    margin-bottom: 15px;
+}
+
+.task-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 4px;
+}
