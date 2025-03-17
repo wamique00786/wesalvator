@@ -7,7 +7,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    user_type = models.CharField(max_length=20, choices=[('USER', 'User'), ('VOLUNTEER', 'Volunteer'), ('ADMIN', 'Admin')])
+    user_type = models.CharField(max_length=20, choices=[('USER', 'User'), ('VOLUNTEER', 'Volunteer'), ('ORGANIZATION', 'Organization')])
     mobile_number = PhoneNumberField(region='IN', blank=True, null=True)
     location = geomodels.PointField(null=True, blank=True, srid=4326)  # Use PointField for geographic data
     last_location_update = models.DateTimeField(null=True, blank=True)

@@ -11,7 +11,7 @@ class SignUpForm(UserCreationForm):
     USER_TYPES = [
         ('USER', 'Regular User'),
         ('VOLUNTEER', 'Volunteer'),
-        ('ADMIN', 'Administrator')
+        ('ORGANIZATION', 'Organization')
     ]
 
     user_type = forms.ChoiceField(

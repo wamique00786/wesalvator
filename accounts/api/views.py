@@ -113,23 +113,23 @@ def get_volunteer_location(request, volunteer_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def save_admin_location(request):
+def save_org_location(request):
     try:
-        # Ensure user is an admin
-        if not hasattr(request.user, 'userprofile') or request.user.userprofile.user_type != 'ADMIN':
+        # Ensure user is an ORGANIZATION
+        if not hasattr(request.user, 'userprofile') or request.user.userprofile.user_type != 'ORGANIZATION':
             return Response({
                 'status': 'error',
-                'message': 'Only admin users can update their location'
+                'message': 'Only Organization can update their location'
             }, status=403)
 
-        # Use static coordinates for admin
+        # Use static coordinates for ORGANIZATION
         latitude = 18.5204
         longitude = 73.8567
 
         # Create Point object
         location = Point(longitude, latitude, srid=4326)
 
-        # Update admin's location
+        # Update ORGANIZATION's location
         profile = request.user.userprofile
         profile.location = location
         profile.last_location_update = timezone.now()
@@ -137,7 +137,7 @@ def save_admin_location(request):
 
         return Response({
             'status': 'success',
-            'message': 'Admin location set to default coordinates',
+            'message': 'Organization location set to default coordinates',
             'data': {
                 'latitude': latitude,
                 'longitude': longitude,
@@ -213,25 +213,25 @@ class NearbyVolunteersView(generics.ListAPIView):
         context["distance"] = True  # Ensures distance is included in the response
         return context
 
-class AdminUserListView(generics.ListAPIView):
+class OrgListView(generics.ListAPIView):
     """
-    API View to fetch all admin users and calculate the distance from the authenticated user.
+    API View to fetch all ORGANIZATION users and calculate the distance from the authenticated user.
     """
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Get all admin profiles
-        admins = UserProfile.objects.filter(user_type="ADMIN").select_related('user')
+        # Get all ORGANIZATION profiles
+        orgs = UserProfile.objects.filter(user_type="ORGANIZATION").select_related('user')
         
-        # Set static location for all admins
+        # Set static location for all ORGANIZATION
         static_point = Point(73.8567, 18.5204, srid=4326)  # longitude, latitude
         
-        for admin in admins:
-            admin.location = static_point
-            admin.save()
+        for org in orgs:
+            org.location = static_point
+            org.save()
         
-        return admins
+        return orgs
 
 
 class UserReportView(generics.CreateAPIView):
@@ -366,19 +366,19 @@ class UserReportView(generics.CreateAPIView):
                 )
 
             # **If no volunteers, assign to admin**
-            admin_profile = UserProfile.objects.filter(user_type="ADMIN").first()
-            if admin_profile:
-                report.assigned_to = admin_profile.user
-                report.status = "ADMIN_REVIEW"
+            orgs = UserProfile.objects.filter(user_type="ORGANIZATION").first()
+            if orgs:
+                report.assigned_to = orgs.user
+                report.status = "ORGANIZATION REVIEW"
                 report.save()
 
-                sm.send_mail_to_admin(admin_profile, report, request)
+                sm.send_mail_to_org(orgs, report, request)
 
                 return Response(
                     {
                         "status": "success",
-                        "message": "No nearby volunteers available. Report assigned to admin.",
-                        "assigned_to": "admin",
+                        "message": "No nearby volunteers available. Report assigned to organization.",
+                        "assigned_to": "organization",
                         "priority": report.priority,
                     },
                     status=status.HTTP_201_CREATED,

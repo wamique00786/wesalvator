@@ -373,9 +373,10 @@ async function fetchNearbyVolunteers(latitude, longitude) {
 }
 
 // // Function to fetch and display all admins on the map
-async function fetchAdmins() {
+async function fetchOrgs() {
+    console.log('fetching orgs...')
     try {
-        const response = await fetch('/api/admins/', {
+        const response = await fetch('/api/organizations/', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -773,7 +774,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Fetch initial volunteer and admin locations
             fetchNearbyVolunteers(lat, lng);
-            fetchAdmins();
+            fetchOrgs();
+
         } else {
             console.log('User marker not yet initialized');
         }
@@ -789,6 +791,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Fetch updated volunteer and admin locations
                 fetchNearbyVolunteers(lat, lng);
+                fetchOrgs();
+
             }
         }, 10000); // Update every 10 seconds
     }, 2000); // Wait 2 seconds for initialization
