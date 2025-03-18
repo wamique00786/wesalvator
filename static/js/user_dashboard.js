@@ -130,7 +130,7 @@ function initMap() {
         maxZoom: 18
     }).setView([0, 0], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
 
     // Remove the "Leaflet" attribution
     map.attributionControl.setPrefix('');
@@ -147,6 +147,7 @@ function initMap() {
             container.title = 'Recenter Map';
             
             container.onclick = function() {
+                
                 recenterMap();
             }
             
@@ -162,27 +163,35 @@ function initMap() {
 
 // Function to recenter the map on user's location with 10km radius
 function recenterMap() {
-    if (userMarker) {
-        const pos = userMarker.getLatLng();
-        
-        // Remove existing radius circle if any
-        if (window.radiusCircle) {
-            window.radiusCircle.remove();
-        }
-        
-        // Create new 10km radius circle
-        window.radiusCircle = L.circle([pos.lat, pos.lng], {
-            radius: 10000, // 10km in meters
-            color: '#3388ff',
-            fillColor: '#3388ff',
-            fillOpacity: 0.1,
-            weight: 1
-        }).addTo(map);
-        
-        // Fit map to the radius circle bounds
-        map.fitBounds(window.radiusCircle.getBounds());
+    if (!userMarker) {
+        console.log("User marker not found yet!");
+        return;
     }
+
+    const pos = userMarker.getLatLng();
+    console.log("Recenter map to:", pos.lat, pos.lng);
+
+    // Remove existing radius circle if any
+    if (window.radiusCircle) {
+        window.radiusCircle.remove();
+    }
+
+    // Create new 10km radius circle
+    window.radiusCircle = L.circle([pos.lat, pos.lng], {
+        radius: 10000, // 10km in meters
+        color: '#3388ff',
+        fillColor: '#3388ff',
+        fillOpacity: 0.1,
+        weight: 1
+    }).addTo(map);
+
+    // Set the zoom level dynamically
+    const zoomLevel = getZoomLevelForRadius(pos.lat, 2);
+    console.log("Setting zoom level to:", zoomLevel);
+    
+    map.setView([pos.lat, pos.lng], zoomLevel);
 }
+
 
 // Get user location & store it in the database once
 function getUserLocation() {
@@ -294,8 +303,6 @@ const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
 }
 
 
-
-
 // Function to fetch nearby volunteers
 async function fetchNearbyVolunteers(latitude, longitude) {
     try {
@@ -389,7 +396,6 @@ async function fetchOrgs() {
         }
 
         const data = await response.json();
-        console.log('Fetched admins:', data);
 
         // Remove existing admin markers
         if (window.adminMarkers) {
@@ -414,30 +420,6 @@ async function fetchOrgs() {
 
     } catch (error) {
         console.error('Error fetching admins:', error);
-    }
-}
-
-
-
-// // Function to send report to admin
-async function sendReportToAdmin() {
-    const formData = new FormData();
-    formData.append('photo', document.getElementById('imageData').value);  // Change to match the field name
-    formData.append('description', document.getElementById('description').value);
-    formData.append('latitude', document.getElementById('latitude').value);
-    formData.append('longitude', document.getElementById('longitude').value);
-
-    try {
-        const response = await fetch('/api/admin/report/', {
-            method: 'POST',
-            body: formData,
-        });
-        if (!response.ok) throw new Error('Network response was not ok');
-        const result = await response.json();
-        alert(result.message);
-    } catch (error) {
-        console.error('Error sending report to admin:', error);
-        alert('Failed to send report to admin.');
     }
 }
 

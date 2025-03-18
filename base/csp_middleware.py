@@ -15,7 +15,8 @@ class ContentSecurityPolicyMiddleware:
             "https://www.gstatic.com https://fonts.googleapis.com 'unsafe-inline'; "
             "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com "
             "https://fonts.gstatic.com https://www.google.com https://www.gstatic.com "
-            "https://translate.googleapis.com http://translate.google.com https://translate.google.com; "
+            "https://translate.googleapis.com http://translate.google.com https://translate.google.com "
+            "https://*.basemaps.cartocdn.com; "  # Added basemaps.cartocdn.com for map images
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.googleapis.com; "
             "object-src 'none'; "
             "connect-src 'self' data: https://nominatim.openstreetmap.org "
