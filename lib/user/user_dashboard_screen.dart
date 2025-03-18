@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:mime/mime.dart';
 import 'package:provider/provider.dart';
 import 'package:wesalvator/provider/user_provider.dart';
