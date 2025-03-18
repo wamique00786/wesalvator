@@ -136,10 +136,11 @@ def get_sms_otp(request):
 def custom_login(request):
     if request.user.is_authenticated:
         profile = UserProfile.objects.get(user=request.user)
+        print(profile.user_type)
         if profile.user_type == 'VOLUNTEER':
             return redirect('volunteer_dashboard')
-        elif profile.user_type == 'ADMIN':
-            return redirect('admin_dashboard')
+        elif profile.user_type == 'ORGANIZATION':
+            return redirect('organization_dashboard')
         return redirect('user_dashboard')
 
     if request.method == 'POST':
@@ -163,8 +164,8 @@ def custom_login(request):
                     if user_type == 'VOLUNTEER':
                         print("Redirecting to volunteer dashboard")  # Debug print
                         return redirect('volunteer_dashboard')
-                    elif user_type == 'ADMIN':
-                        return redirect('admin_dashboard')
+                    elif user_type == 'ORGANIZATION':
+                        return redirect('organization_dashboard')
                     else:
                         return redirect('user_dashboard')
                 else:
