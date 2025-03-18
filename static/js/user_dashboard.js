@@ -793,3 +793,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 10000); // Update every 10 seconds
     }, 2000); // Wait 2 seconds for initialization
 });
+
+function renderMarkers() {
+    // Assuming you have a function to get user data
+    fetch('/api/get-users/')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(user => {
+                if (user.user_type === 'ADMIN' && user.location) {
+                    const [lng, lat] = user.location.coordinates;
+                    L.marker([lat, lng]).addTo(map).bindPopup(user.username);
+                }
+                // Handle other user types...
+            });
+        });
+}

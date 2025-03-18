@@ -14,11 +14,22 @@ class SignUpForm(UserCreationForm):
         ('ADMIN', 'Administrator')
     ]
 
+    name = forms.CharField(
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='Name'
+    )
     user_type = forms.ChoiceField(
         choices=USER_TYPES,
         required=True,
         widget=forms.Select(attrs={'class': 'form-control'}),
         label='User Type'
+    )
+    admin_name = forms.ModelChoiceField(
+        queryset=User.objects.filter(userprofile__user_type='ADMIN'),  # Initially empty
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'admin_name'}),
+        label='Select Admin'
     )
     email = forms.EmailField(
         required=True,
@@ -52,9 +63,11 @@ class SignUpForm(UserCreationForm):
         label='Confirm Password'
     )
 
+    location = forms.CharField(widget=forms.HiddenInput(), required=False)
+
     class Meta:
         model = User
-        fields = ('username', 'email', 'mobile_number', 'country_code', 'password1', 'password2', 'user_type')
+        fields = ('name', 'username', 'email', 'mobile_number', 'country_code', 'password1', 'password2', 'user_type', 'admin_name', 'location')
 
     def clean_mobile_number(self):
         """

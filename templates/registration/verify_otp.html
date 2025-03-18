@@ -1,0 +1,26 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mt-5">
+            <div class="card-header">
+                <h3 class="text-center">Verify OTP</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Email OTP</label>
+                        <input type="text" name="email_otp" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mobile OTP</label>
+                        <input type="text" name="mobile_otp" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Verify</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

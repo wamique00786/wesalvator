@@ -21,6 +21,41 @@
                             Please correct the errors below.
                         </div>
                     {% endif %}
+
+                    <!-- User type field -->
+                    <div class="mb-3 text-start position-relative">
+                        <label for="user_type" class="form-label">User type</label>
+                        <div class="position-relative">
+                        <select name="user_type" class="form-select" required id="user_type">
+                            <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
+                            <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
+                            <option value="ADMIN" title="Administrator: Has full access to manage the system.">Organization</option>
+                        </select>
+                        </div>
+                        {% if form.user_type.errors %}
+                            <div class="text-danger">
+                                {{ form.user_type.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3 text-start" id="admin_name_container" style="display: none;">
+                        <label for="admin_name" class="form-label">Select Organization</label>
+                        <select name="admin_name" class="form-select" id="admin_name">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Name field -->
+                    <div class="mb-3 text-start">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" name="name" class="form-control" required id="name">
+                        {% if form.name.errors %}
+                            <div class="text-danger">
+                                {{ form.name.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
                     
                     <!-- Username field -->
                     <div class="mb-3 text-start">
@@ -33,22 +68,34 @@
                         {% endif %}
                     </div>
 
-                    <!-- Email field -->
+                    <!-- Email Field -->
                     <div class="mb-3 text-start">
                         <label for="email" class="form-label">Email address</label>
-                        <input type="email" name="email" class="form-control" required id="email">
-                        {% if form.email.errors %}
-                            <div class="text-danger">
-                                {{ form.email.errors }}
-                            </div>
-                        {% endif %}
+                        <div class="input-group">
+                            <input type="email" name="email" class="form-control" required id="email">
+                            <button type="button" class="btn btn-outline-secondary" onclick="sendEmailOTP()" 
+                                    style="border-radius: 0 5px 5px 0">
+                                Get OTP
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <input type="text" name="email_otp" class="form-control" placeholder="Enter Email OTP" 
+                                id="emailOtpInput" style="display: none;">
+                        </div>
                     </div>
 
-                    <!-- Mobile Number field -->
+                    <!-- Mobile Field -->
                     <div class="mb-3 text-start">
                         <label for="mobile_number" class="form-label">Mobile Number</label>
-                        <div class="position-relative">
+                        <div class="input-group">
                             <input id="mobile_number" type="tel" name="mobile_number" class="form-control" required>
+                            <button type="button" class="btn btn-outline-secondary" onclick="sendSmsOTP()" 
+                                    style="border-radius: 0 5px 5px 0">
+                                Get OTP
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <input type="text" name="mobile_otp" class="form-control" placeholder="Enter SMS OTP" id="smsOtpInput" style="display: none;">
                         </div>
                         <input type="hidden" id="country_code" name="country_code">
                         {% if form.mobile_number.errors %}
@@ -78,24 +125,10 @@
                                 {{ form.password2.errors }}
                             </div>
                         {% endif %}
-                    </div>
-
-                    <!-- User type field -->
-                    <div class="mb-3 text-start position-relative">
-                        <label for="user_type" class="form-label">User type</label>
-                        <div class="position-relative">
-                        <select name="user_type" class="form-select" required id="user_type">
-                            <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
-                            <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
-                            <option value="ADMIN" title="Administrator: Has full access to manage the system.">Administrator</option>
-                        </select>
-                        </div>
-                        {% if form.user_type.errors %}
-                            <div class="text-danger">
-                                {{ form.user_type.errors }}
-                            </div>
-                        {% endif %}
-                    </div>
+                    </div>     
+                    
+                    <!-- Hidden input for location -->
+                    <input type="hidden" id="location" name="location">
                     
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">Sign Up</button>
@@ -116,6 +149,124 @@
 <script src="{% static 'js/utils.js' %}"></script>
 
 <script>
+    document.getElementById('user_type').addEventListener('change', function() {
+        const userType = this.value;
+        const adminSelect = document.getElementById('admin_name');
+        const adminContainer = document.getElementById('admin_name_container');
+        const locationInput = document.getElementById('location');
+
+        // Reset admin selection
+        adminSelect.innerHTML = ''; // Clear existing options
+        adminContainer.style.display = 'none'; // Hide by default
+
+        if (userType === 'VOLUNTEER') {
+            // Show the admin select dropdown
+            adminSelect.parentElement.style.display = 'block';
+
+            // Fetch the list of Admins
+            fetch('/get-admins/')
+                .then(response => response.json())
+                .then(data => {
+                    adminSelect.innerHTML = ''; // Clear existing options
+                    const individualOption = document.createElement('option');
+                    individualOption.value = '';
+                    individualOption.textContent = 'Individual';
+                    adminSelect.appendChild(individualOption);
+
+                    data.admins.forEach(admin => {
+                        const option = document.createElement('option');
+                        option.value = admin.id;
+                        option.textContent = admin.username; // Assuming username is the field to display
+                        adminSelect.appendChild(option);
+                    });
+                });
+        } else if (userType === 'ADMIN') {
+            // Show location confirmation popup
+            if (confirm("Would you like to store your live location?")) {
+                // Get the user's location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        locationInput.value = `${lat},${lng}`; // Store location in hidden input
+                        alert("Location stored successfully!");
+                    }, function() {
+                        alert("Unable to retrieve your location.");
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            }
+        }
+    });
+    function sendEmailOTP() {
+        const email = document.getElementById('email').value;
+        if (!validateEmail(email)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        // Disable button for 60 seconds
+        const btn = event.target;
+        btn.disabled = true;
+        setTimeout(() => btn.disabled = false, 60000);
+
+        // Show OTP input
+        document.getElementById('emailOtpInput').style.display = 'block';
+
+        // Send AJAX request
+        fetch('/get-email-otp/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({email: email})
+        }).then(response => {
+            if (response.ok) alert('OTP sent to email!');
+            else alert('Error sending OTP');
+        });
+    }
+
+    function sendSmsOTP() {
+        const phoneInput = document.getElementById('mobile_number');
+        const countryCode = document.getElementById('country_code').value;
+        const fullNumber = countryCode + phoneInput.value;
+
+        // Get intl-tel-input instance
+        const iti = window.intlTelInputGlobals.getInstance(phoneInput);
+
+        if (!iti.isValidNumber()) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        // Disable button for 60 seconds
+        const btn = event.target;
+        btn.disabled = true;
+        setTimeout(() => btn.disabled = false, 60000);
+
+        // Show OTP input
+        document.getElementById('smsOtpInput').style.display = 'block';
+
+        // Send AJAX request
+        fetch('/get-sms-otp/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({mobile: iti.getNumber()})
+        }).then(response => {
+            if (response.ok) alert('OTP sent to mobile!');
+            else alert('Error sending OTP');
+        });
+    }
+
+    // Basic email validation
+    function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
     document.addEventListener("DOMContentLoaded", function () {
         var input = document.querySelector("#mobile_number");
         var countryCodeInput = document.querySelector("#country_code");

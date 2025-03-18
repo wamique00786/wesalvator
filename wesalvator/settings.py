@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'chatbot',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_otp',
+    'django_otp.plugins.otp_email',
 ]
 
 MIDDLEWARE = [
@@ -50,6 +52,7 @@ MIDDLEWARE = [
     'base.csp_middleware.ContentSecurityPolicyMiddleware',
     'session_timeout.middleware.SessionTimeoutMiddleware',
     'chatbot.middleware.ChatWidgetMiddleware',
+    'django_otp.middleware.OTPMiddleware',
 ]
 
 ROOT_URLCONF = "wesalvator.urls"
@@ -158,9 +161,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-#GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
+GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
 #GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
-GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
+#GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

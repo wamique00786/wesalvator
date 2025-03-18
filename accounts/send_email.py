@@ -1,6 +1,9 @@
 from django.core.mail import send_mail
 from django.conf import settings
 
+def send_sms_to_user(mobile_number, otp):
+    # Mock implementation (prints to console)
+    print(f"[DEV] Mock SMS sent to {mobile_number}: OTP is {otp}")
 
 def send_mail_to_volunteer(volunteer_profile, report):
     """
