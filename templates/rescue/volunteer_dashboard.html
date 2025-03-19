@@ -94,12 +94,18 @@ const markerIcons = {
     })
 };
 
+let volunteerMarkers = {}; // Store markers for multiple volunteers
+let socket;
+
 // Initialize the map
 function initMap() {
     map = L.map('map', {
         minZoom: 3,
         maxZoom: 18
-    }).setView([27.531569, 80.748748], 13);
+    });
+
+    // Set initial view (temporary, will center on volunteer later)
+    map.setView([27.531569, 80.748748], 13);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
@@ -110,19 +116,12 @@ function initMap() {
 
     // Add custom recenter control
     const recenterControl = L.Control.extend({
-        options: {
-            position: 'bottomleft'
-        },
-
-        onAdd: function(map) {
+        options: { position: 'bottomleft' },
+        onAdd: function (map) {
             const container = L.DomUtil.create('div', 'custom-map-control');
             container.innerHTML = '<i class="fas fa-crosshairs"></i>';
             container.title = 'Recenter Map';
-            
-            container.onclick = function() {
-                recenterMap();
-            }
-            
+            container.onclick = recenterMap;
             return container;
         }
     });
@@ -132,25 +131,26 @@ function initMap() {
     // Add static admin marker
     const adminLat = 18.5204;
     const adminLng = 73.8567;
-    adminMarker = L.marker([adminLat, adminLng], {
+    const adminMarker = L.marker([adminLat, adminLng], {
         icon: markerIcons['ADMIN']
     }).addTo(map);
     adminMarker.bindPopup('Admin Office<br>Pune, Maharashtra, India');
 
-    // Start watching volunteer location
+    // Start WebSocket connection and volunteer location tracking
+    connectWebSocket();
     watchVolunteerLocation();
 }
 
-// Add recenter functionality
+// Recenter map to volunteer's location
 function recenterMap() {
     if (volunteerMarker) {
         const pos = volunteerMarker.getLatLng();
-        
-        // Remove existing radius circle if any
+
+        // Remove existing radius circle
         if (radiusCircle) {
             radiusCircle.remove();
         }
-        
+
         // Create new 10km radius circle
         radiusCircle = L.circle([pos.lat, pos.lng], {
             radius: 10000, // 10km in meters
@@ -159,168 +159,134 @@ function recenterMap() {
             fillOpacity: 0.1,
             weight: 1
         }).addTo(map);
-        
+
         // Fit map to the radius circle bounds
         map.fitBounds(radiusCircle.getBounds());
     }
 }
 
-// Add event listener for initialization
-document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-});
-
-// Modify watchVolunteerLocation to include initial centering
+// Function to start tracking volunteer's location
 function watchVolunteerLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
-            async function (position) {
+            function (position) {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
 
-                // Update volunteer marker
+                console.log(`Updated location: ${latitude}, ${longitude}`);
+
+                // Update or create volunteer's marker
                 if (volunteerMarker) {
                     volunteerMarker.setLatLng([latitude, longitude]);
                 } else {
                     volunteerMarker = L.marker([latitude, longitude], {
                         icon: markerIcons['VOLUNTEER']
-                    }).addTo(map);
-                    volunteerMarker.bindPopup('You (Volunteer)');
-                    
-                    // Initial centering when marker is first created
-                    recenterMap();
+                    }).addTo(map).bindPopup('You (Volunteer)');
                 }
 
-                // Save location in cookies and database
-                document.cookie = `voln_latitude=${latitude}; path=/`;
-                document.cookie = `voln_longitude=${longitude}; path=/`;
-                await updateVolunteerLocation(latitude, longitude);
+                // Always center the map on the volunteer
+                map.setView([latitude, longitude], 13);
 
-                // Update tracking line if there's a report marker
-                if (reportMarker && trackingLine) {
-                    const reportLatLng = reportMarker.getLatLng();
-                    const routeCoords = await getRouteCoordinates(
-                        latitude, longitude,
-                        reportLatLng.lat, reportLatLng.lng
-                    );
-                    trackingLine.setLatLngs(routeCoords);
-                }
+                // Send location update to WebSocket
+                sendVolunteerLocation(latitude, longitude);
             },
             function (error) {
                 console.error('Error watching location:', error);
             },
-            { enableHighAccuracy: true }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
     }
 }
 
-// Get route coordinates using OSRM
-async function getRouteCoordinates(startLat, startLng, endLat, endLng) {
-    try {
-        const response = await fetch(
-            `https://router.project-osrm.org/route/v1/driving/` +
-            `${startLng},${startLat};${endLng},${endLat}` +
-            `?overview=full&geometries=geojson`
-        );
 
-        if (!response.ok) {
-            throw new Error('Failed to get route');
+// Dynamically set WebSocket URL
+const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+const wsHost = window.location.host; // Gets domain or localhost with port
+const wsURL = `${wsProtocol}${wsHost}/ws/location/`;
+
+// WebSocket setup function
+function connectWebSocket() {
+    socket = new WebSocket(wsURL);
+
+    socket.onopen = function () {
+        console.log("✅ WebSocket connected.");
+    };
+
+    socket.onmessage = function (event) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log("📡 Received WebSocket Message:", data);
+
+            if (data.volunteers) {
+                console.log("🔄 Updating volunteer locations:", data.volunteers);
+                updateVolunteerMarkers(data.volunteers);
+            }
+        } catch (error) {
+            console.error("❌ WebSocket message error:", error);
         }
+    };
 
-        const data = await response.json();
-        if (data.code !== 'Ok' || !data.routes[0]) {
-            throw new Error('No route found');
-        }
+    socket.onerror = function (error) {
+        console.error("⚠️ WebSocket Error:", error);
+    };
 
-        return data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-    } catch (error) {
-        console.error('OSRM routing error:', error);
-        // Return direct line coordinates as fallback
-        return [[startLat, startLng], [endLat, endLng]];
-    }
+    socket.onclose = function () {
+        console.log("🔁 WebSocket connection closed. Reconnecting...");
+        setTimeout(connectWebSocket, 3000);
+    };
 }
 
-// Update volunteer location in database
-async function updateVolunteerLocation(latitude, longitude) {
-    try {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const response = await fetch('/api/save-location/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({ latitude, longitude })
-        });
 
-        if (!response.ok) {
-            throw new Error('Failed to save location');
+// Update or create volunteer markers on the map
+function updateVolunteerMarkers(volunteers) {
+    volunteers.forEach(volunteer => {
+        const { id, latitude, longitude } = volunteer;
+
+        if (volunteerMarker) {
+            volunteerMarker.setLatLng([latitude, longitude]);
+        } else {
+            volunteerMarker = L.marker([latitude, longitude], {
+                icon: L.icon({ iconUrl: "volunteer_icon.png", iconSize: [30, 30] })
+            }).addTo(map).bindPopup(`Volunteer ${id}`);
         }
-    } catch (error) {
-        console.error('Error updating volunteer location:', error);
-    }
-}
-
-// Show task location on map
-async function showLocationOnMap(lat, lng) {
-    // Remove existing report marker and tracking line
-    if (reportMarker) {
-        reportMarker.remove();
-    }
-    if (trackingLine) {
-        trackingLine.remove();
-    }
-
-    // Add new report marker
-    reportMarker = L.marker([lat, lng], {
-        icon: markerIcons['REPORT']
-    }).addTo(map);
-    reportMarker.bindPopup('Reported Animal Location').openPopup();
-
-    // Create tracking line if volunteer marker exists
-    if (volunteerMarker) {
-        const volLatLng = volunteerMarker.getLatLng();
-        const routeCoords = await getRouteCoordinates(
-            volLatLng.lat, volLatLng.lng,
-            lat, lng
-        );
-        
-        trackingLine = L.polyline(routeCoords, {
-            color: '#FF4444',
-            weight: 4,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(map);
-    }
-
-    // Fit map bounds to show both markers
-    const bounds = L.latLngBounds([
-        [lat, lng],
-        volunteerMarker ? volunteerMarker.getLatLng() : [18.5204, 73.8567]
-    ]);
-    map.fitBounds(bounds, { padding: [50, 50] });
-
-    // Scroll to map smoothly
-    document.getElementById('map').scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center' 
     });
 }
 
-function renderMarkers() {
-    // Assuming you have a function to get user data
-    fetch('/api/get-users/')
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(user => {
-                if (user.user_type === 'ADMIN' && user.location) {
-                    const [lng, lat] = user.location.coordinates;
-                    L.marker([lat, lng]).addTo(map).bindPopup(user.username);
-                }
-                // Handle other user types...
-            });
-        });
+// Track volunteer location using Geolocation API
+function trackVolunteerLocation() {
+    if (!navigator.geolocation) {
+        console.error("Geolocation is not supported by this browser.");
+        return;
+    }
+
+    navigator.geolocation.watchPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log(`New Location: ${latitude}, ${longitude}`);
+            sendVolunteerLocation(latitude, longitude);
+        },
+        (error) => {
+            console.error("Error getting location:", error);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+    );
 }
+
+
+// Send volunteer's location via WebSocket
+function sendVolunteerLocation(latitude, longitude) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ latitude, longitude }));
+    } else {
+        console.error("WebSocket is not open!");
+    }
+}
+
+// Initialize map and tracking when DOM is loaded
+document.addEventListener("DOMContentLoaded", function () {
+    initMap();
+    connectWebSocket();
+    trackVolunteerLocation();
+});
 </script>
 {% endblock %}

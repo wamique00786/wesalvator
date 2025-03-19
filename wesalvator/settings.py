@@ -14,10 +14,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1']
+ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
+    "channels",
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -80,9 +82,20 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "wesalvator.wsgi.application"
+# WSGI_APPLICATION = "wesalvator.wsgi.application"
+ASGI_APPLICATION = "wesalvator.asgi.application"
 
 # Database
+# Redis for Channels Layer (ensure Redis is running)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",  # Fix import
+        "CONFIG": {
+            "hosts": [("144.24.122.171", 6379)],
+        },
+    },
+}
+
 
 '''DATABASES = {
     'default': {
@@ -161,8 +174,8 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
-#GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
+# GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
+GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
 #GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
 REST_FRAMEWORK = {
