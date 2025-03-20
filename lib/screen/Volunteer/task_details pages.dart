@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:wesalvator/Volunteer/map_page.dart';
+import 'package:wesalvator/screen/Volunteer/map_page.dart';
 
 class TaskDetailsPages extends StatefulWidget {
   const TaskDetailsPages({super.key});

@@ -6,11 +6,11 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:wesalvator/Admin/admin_dashboard.dart';
-import 'package:wesalvator/Volunteer/volunteer_dashboard.dart';
+import 'package:wesalvator/screen/Admin/admin_dashboard.dart';
+import 'package:wesalvator/screen/Volunteer/volunteer_dashboard.dart';
 import 'package:wesalvator/provider/user_provider.dart';
 import 'package:wesalvator/services/notification.dart';
-import 'package:wesalvator/user/user_dashboard_screen.dart';
+import 'package:wesalvator/screen/User/user_dashboard_screen.dart';
 
 class AuthService {
   static const _secureStorage = FlutterSecureStorage();

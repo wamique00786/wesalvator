@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -41,11 +43,11 @@ Future<void> requestNotificationPermission() async {
   PermissionStatus status = await Permission.notification.request();
 
   if (status.isGranted) {
-    print("✅ Notification permission granted!");
+    log(" Notification permission granted!");
   } else if (status.isDenied) {
-    print("⚠️ Notification permission denied!");
+    log(" Notification permission denied!");
   } else if (status.isPermanentlyDenied) {
-    print("❌ Notification permission permanently denied! Opening settings...");
+    log(" Notification permission permanently denied! Opening settings...");
     openAppSettings();
   }
 }
@@ -60,7 +62,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'WeSalvatore',
+      title: 'WeSalvator',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),

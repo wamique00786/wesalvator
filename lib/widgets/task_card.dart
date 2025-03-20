@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:wesalvator/Volunteer/task_details%20pages.dart';
+import 'package:wesalvator/screen/Volunteer/task_details%20pages.dart';
 
 class TaskCard extends StatefulWidget {
   final String title;
