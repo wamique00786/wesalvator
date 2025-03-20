@@ -94,9 +94,6 @@ const markerIcons = {
     })
 };
 
-let volunteerMarkers = {}; // Store markers for multiple volunteers
-let socket;
-
 // Initialize the map
 function initMap() {
     map = L.map('map', {
@@ -136,9 +133,7 @@ function initMap() {
     }).addTo(map);
     adminMarker.bindPopup('Admin Office<br>Pune, Maharashtra, India');
 
-    // Start WebSocket connection and volunteer location tracking
-    connectWebSocket();
-    watchVolunteerLocation();
+
 }
 
 // Recenter map to volunteer's location
@@ -165,51 +160,23 @@ function recenterMap() {
     }
 }
 
-// Function to start tracking volunteer's location
-function watchVolunteerLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            function (position) {
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
-
-                console.log(`Updated location: ${latitude}, ${longitude}`);
-
-                // Update or create volunteer's marker
-                if (volunteerMarker) {
-                    volunteerMarker.setLatLng([latitude, longitude]);
-                } else {
-                    volunteerMarker = L.marker([latitude, longitude], {
-                        icon: markerIcons['VOLUNTEER']
-                    }).addTo(map).bindPopup('You (Volunteer)');
-                }
-
-                // Always center the map on the volunteer
-                map.setView([latitude, longitude], 13);
-
-                // Send location update to WebSocket
-                sendVolunteerLocation(latitude, longitude);
-            },
-            function (error) {
-                console.error('Error watching location:', error);
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-        );
-    }
-}
-
 
 // Dynamically set WebSocket URL
 const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
 const wsHost = window.location.host; // Gets domain or localhost with port
 const wsURL = `${wsProtocol}${wsHost}/ws/location/`;
+let volunteerMarkers = {}; // Store markers for multiple volunteers
+let socket;
 
-// WebSocket setup function
+// Function to initialize WebSocket connection
+let reconnectAttempts = 0;
+
 function connectWebSocket() {
     socket = new WebSocket(wsURL);
 
     socket.onopen = function () {
         console.log("✅ WebSocket connected.");
+        reconnectAttempts = 0; // Reset reconnect attempts on success
     };
 
     socket.onmessage = function (event) {
@@ -218,7 +185,6 @@ function connectWebSocket() {
             console.log("📡 Received WebSocket Message:", data);
 
             if (data.volunteers) {
-                console.log("🔄 Updating volunteer locations:", data.volunteers);
                 updateVolunteerMarkers(data.volunteers);
             }
         } catch (error) {
@@ -231,56 +197,84 @@ function connectWebSocket() {
     };
 
     socket.onclose = function () {
-        console.log("🔁 WebSocket connection closed. Reconnecting...");
-        setTimeout(connectWebSocket, 3000);
+        let delay = Math.min(5000, (2 ** reconnectAttempts) * 1000);
+        console.log(`🔁 WebSocket closed. Reconnecting in ${delay / 1000} seconds...`);
+        setTimeout(connectWebSocket, delay);
+        reconnectAttempts++;
     };
 }
 
 
-// Update or create volunteer markers on the map
-function updateVolunteerMarkers(volunteers) {
-    volunteers.forEach(volunteer => {
-        const { id, latitude, longitude } = volunteer;
+let geoWatchID;
 
-        if (volunteerMarker) {
-            volunteerMarker.setLatLng([latitude, longitude]);
-        } else {
-            volunteerMarker = L.marker([latitude, longitude], {
-                icon: L.icon({ iconUrl: "volunteer_icon.png", iconSize: [30, 30] })
-            }).addTo(map).bindPopup(`Volunteer ${id}`);
-        }
-    });
-}
-
-// Track volunteer location using Geolocation API
 function trackVolunteerLocation() {
     if (!navigator.geolocation) {
-        console.error("Geolocation is not supported by this browser.");
+        console.error("❌ Geolocation is not supported by this browser.");
         return;
     }
 
-    navigator.geolocation.watchPosition(
+    geoWatchID = navigator.geolocation.watchPosition(
         (position) => {
             const { latitude, longitude } = position.coords;
-            console.log(`New Location: ${latitude}, ${longitude}`);
+            console.log(`📍 New Location: ${latitude}, ${longitude}`);
+            updateVolunteerMarker(latitude, longitude);
             sendVolunteerLocation(latitude, longitude);
         },
         (error) => {
-            console.error("Error getting location:", error);
+            console.error("❌ Error getting location:", error);
+            
+            // Restart tracking if it stops unexpectedly
+            if (error.code === error.PERMISSION_DENIED) {
+                console.warn("🛑 Permission denied. Cannot track location.");
+            } else {
+                console.warn("⚠️ Restarting location tracking...");
+                setTimeout(trackVolunteerLocation, 3000);
+            }
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
     );
 }
 
 
-// Send volunteer's location via WebSocket
+// Function to update or create the volunteer's own marker
+let myMarker = null;
+function updateVolunteerMarker(latitude, longitude) {
+    if (!myMarker) {
+        myMarker = L.marker([latitude, longitude], {
+            icon:  markerIcons['VOLUNTEER'] 
+        }).addTo(map).bindPopup("You (Volunteer)");
+    } else {
+        myMarker.setLatLng([latitude, longitude]);
+    }
+
+    // Keep the map centered on the volunteer
+    map.setView([latitude, longitude], 13);
+}
+
+// Function to send volunteer's location via WebSocket
 function sendVolunteerLocation(latitude, longitude) {
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ latitude, longitude }));
     } else {
-        console.error("WebSocket is not open!");
+        console.error("❌ WebSocket is not open!");
     }
 }
+
+// Function to update other volunteers' markers on the map
+function updateVolunteerMarkers(volunteers) {
+    volunteers.forEach(({ id, latitude, longitude }) => {
+        if (!volunteerMarkers[id]) {
+            // Create a new marker for this volunteer
+            volunteerMarkers[id] = L.marker([latitude, longitude], {
+                icon: markerIcons['VOLUNTEER'] 
+            }).addTo(map).bindPopup(`Volunteer ${id}`);
+        } else {
+            // Update the existing marker position
+            volunteerMarkers[id].setLatLng([latitude, longitude]);
+        }
+    });
+}
+
 
 // Initialize map and tracking when DOM is loaded
 document.addEventListener("DOMContentLoaded", function () {
