@@ -55,6 +55,7 @@ dependencies:
   permission_handler: ^11.4.0
   flutter_local_notifications: ^18.0.1
   geocoding: ^3.0.0
+  mailer: ^6.4.1
 
 dev_dependencies:
   flutter_test:

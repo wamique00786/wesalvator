@@ -6,7 +6,7 @@ import 'package:wesalvator/provider/user_provider.dart';
 import 'package:wesalvator/screen/User/Uwidget/image_preview.dart';
 import 'package:wesalvator/screen/User/Uwidget/submit_button.dart';
 import 'package:wesalvator/screen/User/map_section.dart';
-import 'package:wesalvator/views/navbar.dart';
+import 'package:wesalvator/nav_section/navbar_main.dart';
 
 import '../../utils/snackbar_utils';
 

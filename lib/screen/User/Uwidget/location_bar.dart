@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:wesalvator/services/get_address.dart';
 
 class LocationBar extends StatelessWidget {
   final Position? currentPosition;
@@ -42,12 +43,46 @@ class LocationBar extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  currentPosition != null
-                      ? 'Lat: ${currentPosition!.latitude.toStringAsFixed(6)}, Long: ${currentPosition!.longitude.toStringAsFixed(6)}'
-                      : 'Fetching location...',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                ),
+                // Use FutureBuilder to handle async function
+                currentPosition != null
+                    ? FutureBuilder<String?>(
+                      future: GetAddress().getAddressFromCurrentLocation(
+                        currentPosition!.latitude,
+                        currentPosition!.longitude,
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Text(
+                            'Fetching location...',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          );
+                        } else if (snapshot.hasError) {
+                          return Text(
+                            'Error retrieving address',
+                            style: TextStyle(color: Colors.red, fontSize: 14),
+                          );
+                        } else {
+                          return Text(
+                            snapshot.data ?? 'Unknown Location',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
+                          );
+                        }
+                      },
+                    )
+                    : Text(
+                      'Fetching location...',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
               ],
             ),
           ),

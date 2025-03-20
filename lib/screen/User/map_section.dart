@@ -44,7 +44,7 @@ class _MapsectionState extends State<Mapsection> {
         setState(() {
           volunteers = jsonDecode(response.body);
         });
-        log("Fetched volunteers: $volunteers");
+        // log("Fetched volunteers: $volunteers");
       } else {
         log("Failed to fetch volunteer data: ${response.statusCode}");
       }
@@ -76,7 +76,7 @@ class _MapsectionState extends State<Mapsection> {
         setState(() {
           admins = jsonDecode(response.body);
         });
-        log("Fetched admin: $admins");
+        //log("Fetched admin: $admins");
       } else {
         log("Failed to fetch admin data: ${response.statusCode}");
       }
