@@ -12,11 +12,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile
 from .forms import SignUpForm, PasswordResetForm
 import random
-from django_otp.plugins.otp_email.models import EmailDevice
-from .send_email import send_sms_to_user
 from django.http import JsonResponse
-import json
-from .firebase_auth import verify_firebase_token
+#from .firebase_auth import verify_firebase_token
 
 def get_admins(request):
     if request.method == 'GET':
@@ -27,126 +24,26 @@ def signup(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
-            # Generate OTPs
-            email_otp = str(random.randint(100000, 999999))
-            #mobile_otp = str(random.randint(100000, 999999))
+            # Create user but don't save to database yet
+            user = form.save()
+            user.save()  # Now save the user
 
-            # Store data in session
-            request.session['signup_data'] = {
-                'name': form.cleaned_data['name'],
-                'username': form.cleaned_data['username'],
-                'email': form.cleaned_data['email'],
-                'password1': form.cleaned_data['password1'],
-                'user_type': form.cleaned_data['user_type'],
-                'mobile_number': form.cleaned_data['mobile_number'],
-                'location': form.cleaned_data['location'],
-            }
-            request.session['email_otp'] = email_otp
-            #request.session['mobile_otp'] = mobile_otp
-            request.session.set_expiry(300)  # 5 minutes expiration
+            # Update the UserProfile that was automatically created by the signal
+            user_type = form.cleaned_data.get('user_type')
+            try:
+                user_profile = UserProfile.objects.get(user=user)
+                user_profile.user_type = user_type
+                user_profile.save()
+            except UserProfile.DoesNotExist:
+                UserProfile.objects.create(user=user, user_type=user_type)
 
-            # Create and save the user instance
-            user = User(username=form.cleaned_data['username'], email=form.cleaned_data['email'])
-            user.set_password(form.cleaned_data['password1'])  # Set the password
-            user.save()
-
-            # Send email OTP using django-otp
-            device = EmailDevice.objects.create(user=user, name='email_otp_device')
-            device.generate_challenge()  # This sends the OTP via email
-
-            #send_sms_to_user(form.cleaned_data['mobile_number'], mobile_otp)
-
-            return redirect('verify_otp')
+            messages.success(request, 'Account created successfully. Please login.')
+            return redirect('login')
     else:
         form = SignUpForm()
-    return render(request, 'registration/signup.html', {
-        'form': form,
-        'firebase_api_key': settings.FIREBASE_API_KEY,
-        'firebase_auth_domain': settings.FIREBASE_AUTH_DOMAIN,
-        'firebase_project_id': settings.FIREBASE_PROJECT_ID,
-        'firebase_storage_bucket': settings.FIREBASE_STORAGE_BUCKET,
-        'firebase_messaging_sender_id': settings.FIREBASE_MESSAGING_SENDER_ID,
-        'firebase_app_id': settings.FIREBASE_APP_ID,
-    })
+    return render(request, 'registration/signup.html', {'form': form})
 
-def verify_otp(request):
-    if request.method == 'POST':
-        entered_email_otp = request.POST.get('email_otp')
-        #entered_mobile_otp = request.POST.get('mobile_otp')
-        
-        # Retrieve session data
-        signup_data = request.session.get('signup_data')
-        stored_email_otp = request.session.get('email_otp')
-        #stored_mobile_otp = request.session.get('mobile_otp')
-        
-        if not (signup_data and stored_email_otp and stored_email_otp):
-            messages.error(request, 'Session expired. Please register again.')
-            return redirect('signup')
-        
-        if entered_email_otp == stored_email_otp: #and entered_mobile_otp == stored_mobile_otp
-            # Create user
-            user = User.objects.create_user(
-                username=signup_data['username'],
-                email=signup_data['email'],
-                password=signup_data['password1']
-            )
-            # Create UserProfile
-            UserProfile.objects.create(
-                user=user,
-                user_type=signup_data['user_type'],
-                mobile_number=signup_data['mobile_number']
-            )
-            # Clear session
-            del request.session['signup_data']
-            del request.session['email_otp']
-            #del request.session['mobile_otp']
-            messages.success(request, 'Account verified! Please login.')
-            return redirect('login')
-        else:
-            messages.error(request, 'Invalid OTP. Please try again.')
-            return redirect('verify_otp')
-        
-    return render(request, 'registration/verify_otp.html')
-
-@csrf_exempt
-def get_email_otp(request):
-    if request.method == 'POST':
-        email = json.loads(request.body).get('email')
-        otp = str(random.randint(100000, 999999))
-        
-        # Store in session
-        request.session['email_otp'] = otp
-        request.session['email'] = email
-        request.session.set_expiry(300)  # 5 minutes
-        
-        # Send email (use your email sending logic)
-        send_mail(
-            'Your Email OTP',
-            f'Your verification code is: {otp}',
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=False
-        )
-        return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'}, status=400)
-
-@csrf_exempt
-def get_sms_otp(request):
-    if request.method == 'POST':
-        mobile = json.loads(request.body).get('mobile')
-        otp = str(random.randint(100000, 999999))
-        
-        # Store in session
-        request.session['sms_otp'] = otp
-        request.session['mobile'] = mobile
-        request.session.set_expiry(300)  # 5 minutes
-        
-        # Send SMS (use your SMS sending logic)
-        #send_sms_to_user(mobile, otp)
-        return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'}, status=400)
-
-@csrf_exempt
+'''@csrf_exempt
 def verify_firebase_token_view(request):
     if request.method == 'POST':
         id_token = request.POST.get('id_token')
@@ -158,7 +55,7 @@ def verify_firebase_token_view(request):
             # You can create or update the user profile here
             return JsonResponse({'status': 'success', 'uid': uid})
         else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)'''
 
 def custom_login(request):
     if request.user.is_authenticated:

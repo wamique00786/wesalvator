@@ -71,17 +71,12 @@
                     <!-- Email Field -->
                     <div class="mb-3 text-start">
                         <label for="email" class="form-label">Email address</label>
-                        <div class="input-group">
-                            <input type="email" name="email" class="form-control" required id="email">
-                            <!-- <button type="button" class="btn btn-outline-secondary" onclick="sendEmailOTP()" 
-                                    style="border-radius: 0 5px 5px 0">
-                                Get OTP
-                            </button> -->
-                        </div>
-                        <div class="mt-2">
-                            <input type="text" name="email_otp" class="form-control" placeholder="Enter Email OTP" 
-                                id="emailOtpInput" style="display: none;">
-                        </div>
+                        <input type="email" name="email" class="form-control" required id="email">
+                        {% if form.email.errors %}
+                            <div class="text-danger">
+                                {{ form.email.errors }}
+                            </div>
+                        {% endif %}
                     </div>
 
                     <!-- Mobile Field -->
@@ -106,8 +101,8 @@
                         {% endif %}
                     </div>
 
-                    <!-- ReCAPTCHA Container -->
-                    <div id="recaptcha-container"></div>
+                    <!-- ReCAPTCHA Container 
+                    <div id="recaptcha-container"></div> -->
 
                     <!-- Password field -->
                     <div class="mb-3 text-start">
@@ -194,107 +189,7 @@
     });
 </script>
 
-<script type="module">
-
-    // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-
-    // Your web app's Firebase configuration
-    const firebaseConfig = {
-        apiKey: "{{ firebase_api_key }}",
-        authDomain: "{{ firebase_auth_domain }}",
-        projectId: "{{ firebase_project_id }}",
-        storageBucket: "{{ firebase_storage_bucket }}",
-        messagingSenderId: "{{ firebase_messaging_sender_id }}",
-        appId: "{{ firebase_app_id }}"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    window.firebaseAuth = auth;
-
-    // ✅ Setup reCAPTCHA
-    function setupRecaptcha() {
-        if (!window.recaptchaVerifier) {
-            window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', {
-                size: 'invisible'
-            }, auth);
-        }
-    }
-
-    // Commenting out the sendSmsOTP function
-    // function sendSmsOTP() {
-    //     setupRecaptcha();
-
-    //     const phoneInput = document.getElementById("mobile_number");
-    //     const iti = window.intlTelInputGlobals.getInstance(phoneInput);
-
-    //     if (!iti.isValidNumber()) {
-    //         alert("Please enter a valid phone number.");
-    //         return;
-    //     }
-
-    //     const fullNumber = iti.getNumber(); // Get full number in E.164 format
-    //     console.log("Formatted Phone Number:", fullNumber);
-
-    //     signInWithPhoneNumber(auth, fullNumber, window.recaptchaVerifier)
-    //         .then((confirmationResult) => {
-    //             window.confirmationResult = confirmationResult;
-    //             alert("OTP sent successfully!");
-    //             document.getElementById('smsOtpInput').style.display = 'block';
-    //         })
-    //         .catch((error) => {
-    //             alert("Error sending OTP: " + error.message);
-    //         });
-    // }
-
-    // Commenting out the verifyOtp function
-    // function verifyOtp() {
-    //     const otp = document.getElementById("smsOtpInput").value;
-    //     if (!window.confirmationResult) {
-    //         alert("Please request an OTP first.");
-    //         return;
-    //     }
-
-    //     window.confirmationResult.confirm(otp)
-    //         .then((result) => {
-    //             alert("Phone number verified successfully!");
-    //         })
-    //         .catch((error) => {
-    //             alert("Error verifying OTP: " + error.message);
-    //         });
-    // }
-
-    function sendEmailOTP() {
-        const email = document.getElementById("email").value;
-        if (!email) {
-            alert("Please enter a valid email.");
-            return;
-        }
-
-        fetch('/get-email-otp/', {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": "{{ csrf_token }}"
-            },
-            body: JSON.stringify({ email: email })
-        }).then(response => {
-            if (response.ok) {
-                alert("OTP sent to email!");
-                document.getElementById('emailOtpInput').style.display = 'block';
-            } else {
-                alert("Error sending OTP");
-            }
-        });
-    }
-
-    //window.sendSmsOTP = sendSmsOTP;
-    //window.verifyOtp = verifyOtp;
-    window.sendEmailOTP = sendEmailOTP;
-
+<script>
     document.getElementById('user_type').addEventListener('change', function() {
         const userType = this.value;
         const adminSelect = document.getElementById('admin_name');
