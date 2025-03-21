@@ -21,15 +21,24 @@ function getCookie(name) {
 
 // Camera handling
 startButton.addEventListener('click', async () => {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        camera.srcObject = stream;
-        camera.style.display = 'block'; // Show the camera
-        startButton.style.display = 'none'; // Hide the start button
-        captureButton.style.display = 'block'; // Show the capture button
-    } catch (err) {
-        console.error('Error accessing camera:', err);
-        alert('Could not access camera');
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent); // Check if the user is on a mobile device
+
+    if (isMobile) {
+        // Open back camera on mobile devices
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Use back camera
+            camera.srcObject = stream;
+            camera.style.display = 'block'; // Show the camera
+            startButton.style.display = 'none'; // Hide the start button
+            captureButton.style.display = 'block'; // Show the capture button
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Could not access camera');
+        }
+    } else {
+        // Show QR code pop-up on desktop/laptop
+        alert('Please scan the QR code to download the app.');
+        window.open('/static/images/qr-code.png', '_blank'); // Open the QR code image
     }
 });
 
@@ -130,7 +139,7 @@ function initMap() {
         maxZoom: 18
     }).setView([0, 0], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
 
     // Remove the "Leaflet" attribution
     map.attributionControl.setPrefix('');
@@ -147,6 +156,7 @@ function initMap() {
             container.title = 'Recenter Map';
             
             container.onclick = function() {
+                
                 recenterMap();
             }
             
@@ -162,27 +172,35 @@ function initMap() {
 
 // Function to recenter the map on user's location with 10km radius
 function recenterMap() {
-    if (userMarker) {
-        const pos = userMarker.getLatLng();
-        
-        // Remove existing radius circle if any
-        if (window.radiusCircle) {
-            window.radiusCircle.remove();
-        }
-        
-        // Create new 10km radius circle
-        window.radiusCircle = L.circle([pos.lat, pos.lng], {
-            radius: 10000, // 10km in meters
-            color: '#3388ff',
-            fillColor: '#3388ff',
-            fillOpacity: 0.1,
-            weight: 1
-        }).addTo(map);
-        
-        // Fit map to the radius circle bounds
-        map.fitBounds(window.radiusCircle.getBounds());
+    if (!userMarker) {
+        console.log("User marker not found yet!");
+        return;
     }
+
+    const pos = userMarker.getLatLng();
+    console.log("Recenter map to:", pos.lat, pos.lng);
+
+    // Remove existing radius circle if any
+    if (window.radiusCircle) {
+        window.radiusCircle.remove();
+    }
+
+    // Create new 10km radius circle
+    window.radiusCircle = L.circle([pos.lat, pos.lng], {
+        radius: 10000, // 10km in meters
+        color: '#3388ff',
+        fillColor: '#3388ff',
+        fillOpacity: 0.1,
+        weight: 1
+    }).addTo(map);
+
+    // Set the zoom level dynamically
+    const zoomLevel = getZoomLevelForRadius(pos.lat, 2);
+    console.log("Setting zoom level to:", zoomLevel);
+    
+    map.setView([pos.lat, pos.lng], zoomLevel);
 }
+
 
 // Get user location & store it in the database once
 function getUserLocation() {
@@ -294,8 +312,6 @@ const csrfToken = csrfTokenElement ? csrfTokenElement.value : null;
 }
 
 
-
-
 // Function to fetch nearby volunteers
 async function fetchNearbyVolunteers(latitude, longitude) {
     try {
@@ -373,9 +389,10 @@ async function fetchNearbyVolunteers(latitude, longitude) {
 }
 
 // // Function to fetch and display all admins on the map
-async function fetchAdmins() {
+async function fetchOrgs() {
+    console.log('fetching orgs...')
     try {
-        const response = await fetch('/api/admins/', {
+        const response = await fetch('/api/organizations/', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -388,7 +405,6 @@ async function fetchAdmins() {
         }
 
         const data = await response.json();
-        console.log('Fetched admins:', data);
 
         // Remove existing admin markers
         if (window.adminMarkers) {
@@ -413,30 +429,6 @@ async function fetchAdmins() {
 
     } catch (error) {
         console.error('Error fetching admins:', error);
-    }
-}
-
-
-
-// // Function to send report to admin
-async function sendReportToAdmin() {
-    const formData = new FormData();
-    formData.append('photo', document.getElementById('imageData').value);  // Change to match the field name
-    formData.append('description', document.getElementById('description').value);
-    formData.append('latitude', document.getElementById('latitude').value);
-    formData.append('longitude', document.getElementById('longitude').value);
-
-    try {
-        const response = await fetch('/api/admin/report/', {
-            method: 'POST',
-            body: formData,
-        });
-        if (!response.ok) throw new Error('Network response was not ok');
-        const result = await response.json();
-        alert(result.message);
-    } catch (error) {
-        console.error('Error sending report to admin:', error);
-        alert('Failed to send report to admin.');
     }
 }
 
@@ -773,7 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Fetch initial volunteer and admin locations
             fetchNearbyVolunteers(lat, lng);
-            fetchAdmins();
+            fetchOrgs();
+
         } else {
             console.log('User marker not yet initialized');
         }
@@ -789,7 +782,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Fetch updated volunteer and admin locations
                 fetchNearbyVolunteers(lat, lng);
+                fetchOrgs();
+
             }
         }, 10000); // Update every 10 seconds
     }, 2000); // Wait 2 seconds for initialization
 });
+
+function renderMarkers() {
+    // Assuming you have a function to get user data
+    fetch('/api/get-users/')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(user => {
+                if (user.user_type === 'ADMIN' && user.location) {
+                    const [lng, lat] = user.location.coordinates;
+                    L.marker([lat, lng]).addTo(map).bindPopup(user.username);
+                }
+                // Handle other user types...
+            });
+        });
+}

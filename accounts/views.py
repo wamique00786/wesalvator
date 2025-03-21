@@ -11,6 +11,14 @@ from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile
 from .forms import SignUpForm, PasswordResetForm
+import random
+from django.http import JsonResponse
+#from .firebase_auth import verify_firebase_token
+
+def get_admins(request):
+    if request.method == 'GET':
+        admins = User.objects.filter(userprofile__user_type='ADMIN').values('id', 'username')
+        return JsonResponse({'admins': list(admins)})
 
 def signup(request):
     if request.method == 'POST':
@@ -35,13 +43,28 @@ def signup(request):
         form = SignUpForm()
     return render(request, 'registration/signup.html', {'form': form})
 
+'''@csrf_exempt
+def verify_firebase_token_view(request):
+    if request.method == 'POST':
+        id_token = request.POST.get('id_token')
+        decoded_token = verify_firebase_token(id_token)
+        if decoded_token:
+            # Get user info from decoded_token
+            uid = decoded_token['uid']
+            # Link the verified phone number to the user account
+            # You can create or update the user profile here
+            return JsonResponse({'status': 'success', 'uid': uid})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)'''
+
 def custom_login(request):
     if request.user.is_authenticated:
         profile = UserProfile.objects.get(user=request.user)
+        print(profile.user_type)
         if profile.user_type == 'VOLUNTEER':
             return redirect('volunteer_dashboard')
-        elif profile.user_type == 'ADMIN':
-            return redirect('admin_dashboard')
+        elif profile.user_type == 'ORGANIZATION':
+            return redirect('organization_dashboard')
         return redirect('user_dashboard')
 
     if request.method == 'POST':
@@ -65,8 +88,8 @@ def custom_login(request):
                     if user_type == 'VOLUNTEER':
                         print("Redirecting to volunteer dashboard")  # Debug print
                         return redirect('volunteer_dashboard')
-                    elif user_type == 'ADMIN':
-                        return redirect('admin_dashboard')
+                    elif user_type == 'ORGANIZATION':
+                        return redirect('organization_dashboard')
                     else:
                         return redirect('user_dashboard')
                 else:
@@ -92,7 +115,7 @@ def password_reset_request(request):
                     context = {
                         "email": user.email,
                         "domain": request.get_host(),
-                        "site_name": "Wesalvatore",
+                        "site_name": "Wesalvator",
                         "uid": urlsafe_base64_encode(force_bytes(user.pk)),
                         "token": default_token_generator.make_token(user),
                         "protocol": "http",

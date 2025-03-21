@@ -152,6 +152,7 @@
             <!-- New Section: Footer Links -->
             <div class="footer-links mt-3">
                 <ul class="list-inline">
+                    {% if not user.is_authenticated %}
                     <li class="list-inline-item">
                         <a href="{% url 'career' %}" class="text-muted">Career</a>
                     </li>
@@ -164,6 +165,7 @@
                     <li class="list-inline-item">
                         <a href="{% url 'about' %}" class="text-muted">About</a>
                     </li>
+                    {% endif %}
                 </ul>
             </div>
             <span class="text-muted"> &copy; {% now "Y" %} Wesalvator. All rights reserved.</span>

@@ -21,6 +21,41 @@
                             Please correct the errors below.
                         </div>
                     {% endif %}
+
+                    <!-- User type field -->
+                    <div class="mb-3 text-start position-relative">
+                        <label for="user_type" class="form-label">User type</label>
+                        <div class="position-relative">
+                        <select name="user_type" class="form-select" required id="user_type">
+                            <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
+                            <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
+                            <option value="ADMIN" title="Administrator: Has full access to manage the system.">Organization</option>
+                        </select>
+                        </div>
+                        {% if form.user_type.errors %}
+                            <div class="text-danger">
+                                {{ form.user_type.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3 text-start" id="admin_name_container" style="display: none;">
+                        <label for="admin_name" class="form-label">Select Organization</label>
+                        <select name="admin_name" class="form-select" id="admin_name">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Name field -->
+                    <div class="mb-3 text-start">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" name="name" class="form-control" required id="name">
+                        {% if form.name.errors %}
+                            <div class="text-danger">
+                                {{ form.name.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
                     
                     <!-- Username field -->
                     <div class="mb-3 text-start">
@@ -33,7 +68,7 @@
                         {% endif %}
                     </div>
 
-                    <!-- Email field -->
+                    <!-- Email Field -->
                     <div class="mb-3 text-start">
                         <label for="email" class="form-label">Email address</label>
                         <input type="email" name="email" class="form-control" required id="email">
@@ -44,19 +79,30 @@
                         {% endif %}
                     </div>
 
-                    <!-- Mobile Number field -->
+                    <!-- Mobile Field -->
                     <div class="mb-3 text-start">
                         <label for="mobile_number" class="form-label">Mobile Number</label>
-                        <div class="position-relative">
+                        <div class="input-group">
                             <input id="mobile_number" type="tel" name="mobile_number" class="form-control" required>
+                            <!-- <button type="button" class="btn btn-outline-secondary" onclick="sendSmsOTP()" 
+                                    style="border-radius: 0 5px 5px 0">
+                                Get OTP
+                            </button> -->
+                        </div>
+                        <div class="mt-2">
+                            <!-- <input type="text" name="mobile_otp" class="form-control" placeholder="Enter SMS OTP" id="smsOtpInput" style="display: none;"> -->
                         </div>
                         <input type="hidden" id="country_code" name="country_code">
+                        <!-- <button type="button" class="btn btn-primary" onclick="verifyOtp()">Verify OTP</button> -->
                         {% if form.mobile_number.errors %}
                             <div class="text-danger">
                                 {{ form.mobile_number.errors }}
                             </div>
                         {% endif %}
                     </div>
+
+                    <!-- ReCAPTCHA Container 
+                    <div id="recaptcha-container"></div> -->
 
                     <!-- Password field -->
                     <div class="mb-3 text-start">
@@ -78,24 +124,10 @@
                                 {{ form.password2.errors }}
                             </div>
                         {% endif %}
-                    </div>
-
-                    <!-- User type field -->
-                    <div class="mb-3 text-start position-relative">
-                        <label for="user_type" class="form-label">User type</label>
-                        <div class="position-relative">
-                        <select name="user_type" class="form-select" required id="user_type">
-                            <option value="USER" title="Regular User: Can browse and adopt animals.">Regular User</option>
-                            <option value="VOLUNTEER" title="Volunteer: Can assist in animal rescue operations.">Volunteer</option>
-                            <option value="ADMIN" title="Administrator: Has full access to manage the system.">Administrator</option>
-                        </select>
-                        </div>
-                        {% if form.user_type.errors %}
-                            <div class="text-danger">
-                                {{ form.user_type.errors }}
-                            </div>
-                        {% endif %}
-                    </div>
+                    </div>     
+                    
+                    <!-- Hidden input for location -->
+                    <input type="hidden" id="location" name="location">
                     
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">Sign Up</button>
@@ -132,28 +164,81 @@
             });
 
             // Set initial country code
-        countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
-
-        // Update country code when user changes country
-        input.addEventListener('countrychange', function() {
             countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
-        });
 
-        // Validate on form submission
-        document.querySelector("form").addEventListener("submit", function (event) {
-            var nationalNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL).trim();
-            var isValid = iti.isValidNumber();
+            // Update country code when user changes country
+            input.addEventListener('countrychange', function() {
+                countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
+            });
 
-            if (!isValid) {
-                event.preventDefault();
-                alert("Please enter a valid phone number.");
-                return false;
+            // Validate on form submission
+            document.querySelector("form").addEventListener("submit", function (event) {
+                var nationalNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL).trim();
+                var isValid = iti.isValidNumber();
+
+                if (!isValid) {
+                    event.preventDefault();
+                    alert("Please enter a valid phone number.");
+                    return false;
+                }
+
+                // Optional: Uncomment if server expects full number in mobile_number
+                input.value = nationalNumber;
+            });
+        }
+    });
+</script>
+
+<script>
+    document.getElementById('user_type').addEventListener('change', function() {
+        const userType = this.value;
+        const adminSelect = document.getElementById('admin_name');
+        const adminContainer = document.getElementById('admin_name_container');
+        const locationInput = document.getElementById('location');
+
+        // Reset admin selection
+        adminSelect.innerHTML = ''; // Clear existing options
+        adminContainer.style.display = 'none'; // Hide by default
+
+        if (userType === 'VOLUNTEER') {
+            // Show the admin select dropdown
+            adminSelect.parentElement.style.display = 'block';
+
+            // Fetch the list of Admins
+            fetch('/get-admins/')
+                .then(response => response.json())
+                .then(data => {
+                    adminSelect.innerHTML = ''; // Clear existing options
+                    const individualOption = document.createElement('option');
+                    individualOption.value = '';
+                    individualOption.textContent = 'Individual';
+                    adminSelect.appendChild(individualOption);
+
+                    data.admins.forEach(admin => {
+                        const option = document.createElement('option');
+                        option.value = admin.id;
+                        option.textContent = admin.username; // Assuming username is the field to display
+                        adminSelect.appendChild(option);
+                    });
+                });
+        } else if (userType === 'ADMIN') {
+            // Show location confirmation popup
+            if (confirm("Would you like to store your live location?")) {
+                // Get the user's location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        locationInput.value = `${lat},${lng}`; // Store location in hidden input
+                        alert("Location stored successfully!");
+                    }, function() {
+                        alert("Unable to retrieve your location.");
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
             }
-
-            // Optional: Uncomment if server expects full number in mobile_number
-            input.value = nationalNumber;
-        });
-    }
-});
+        }
+    });
 </script>
 {% endblock %}

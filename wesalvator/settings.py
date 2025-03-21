@@ -1,6 +1,19 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+FIREBASE_CONFIG_PATH = os.path.join(BASE_DIR, "firebase_config.json")
+
+# Initialize Firebase
+if os.path.exists(FIREBASE_CONFIG_PATH):
+    cred = credentials.Certificate(FIREBASE_CONFIG_PATH)
+    firebase_admin.initialize_app(cred)
+else:
+    raise FileNotFoundError(f"Firebase config file not found: {FIREBASE_CONFIG_PATH}")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,10 +27,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1']
+ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
+    "channels",
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -36,6 +51,8 @@ INSTALLED_APPS = [
     'chatbot',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_otp',
+    'django_otp.plugins.otp_email',
 ]
 
 MIDDLEWARE = [
@@ -50,6 +67,7 @@ MIDDLEWARE = [
     'base.csp_middleware.ContentSecurityPolicyMiddleware',
     'session_timeout.middleware.SessionTimeoutMiddleware',
     'chatbot.middleware.ChatWidgetMiddleware',
+    'django_otp.middleware.OTPMiddleware',
 ]
 
 ROOT_URLCONF = "wesalvator.urls"
@@ -77,25 +95,20 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "wesalvator.wsgi.application"
+# WSGI_APPLICATION = "wesalvator.wsgi.application"
+ASGI_APPLICATION = "wesalvator.asgi.application"
+
+# Redis for Channels Layer (ensure Redis is running)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",  # Fix import
+        "CONFIG": {
+            "hosts": [("144.24.122.171", 6379)],
+        },
+    },
+}
 
 # Database
-
-'''DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.mysql',
-        'NAME': os.getenv("DATABASE_NAME"),
-        'USER': os.getenv("DATABASE_USER"),
-        'PASSWORD': os.getenv("DATABASE_PASSWORD"),
-        'HOST': os.getenv("DATABASE_HOST"),
-        'PORT': os.getenv("DATABASE_PORT"),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
-        }
-    }
-}'''
-
 DATABASES = {
     'default': {  # PostgreSQL with PostGIS (for GIS data)
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -148,6 +161,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Firebase configuration
+FIREBASE_CONFIG = {
+    "apiKey": os.getenv("FIREBASE_API_KEY"),
+    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+    "appId": os.getenv("FIREBASE_APP_ID"),
+}
+
+# Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -193,7 +217,7 @@ LOGGING = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-       'https://3827-2409-40e3-102d-7535-357c-ea9d-4498-2ed9.ngrok-free.app',
+       'https://c26f-2409-40e3-305b-b7df-2dfe-4170-2f7d-a4a9.ngrok-free.app',
        'https://wesalvator.com',
        'https://www.wesalvator.com',# Add any other trusted origins here
    ]

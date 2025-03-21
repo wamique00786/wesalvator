@@ -5,6 +5,8 @@ from django.contrib.auth import views as auth_views  # Import Django's auth view
 
 urlpatterns = [
     path('signup/', views.signup, name='signup'),
+    #path('verify-firebase-token/', views.verify_firebase_token_view, name='verify_firebase_token'),
+    path('get-admins/', views.get_admins, name='get_admins'),
     path('login/', views.custom_login, name='login'),
     path('password_reset/', password_reset_request, name='password_reset'), 
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'), 

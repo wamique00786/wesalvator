@@ -5,6 +5,10 @@ from .models import UserProfile
 from rescue.models import AnimalReport, AnimalReportImage
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.gis.geos import Point
+from phonenumber_field.serializerfields import PhoneNumberField
+from rescue.models import VolunteerLocation
+
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,42 +60,48 @@ class LoginSerializer(serializers.Serializer):
     user_type = serializers.ChoiceField(choices=[
         ('USER', 'Regular User'),
         ('VOLUNTEER', 'Volunteer'),
-        ('ADMIN', 'Administrator')
+        ('ORGANIZATION', 'Organization')
     ], required=True)
 
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
     password2 = serializers.CharField(write_only=True, style={'input_type': 'password'}, label='Confirm Password')
-    user_type = serializers.ChoiceField(  # Keep this field for input
-        choices=[('USER', 'Regular User'), ('VOLUNTEER', 'Volunteer'), ('ADMIN', 'Administrator')],
+    user_type = serializers.ChoiceField(  
+        choices=[('USER', 'Regular User'), ('VOLUNTEER', 'Volunteer'), ('ORGANIZATION', 'Organization')],
         write_only=True  # Mark as write-only to avoid serialization issues
     )
-    mobile_number = PhoneNumberField(write_only=True)  # Mark as write-only
+    mobile_number = PhoneNumberField(region="IN", write_only=True)  # Add `region="IN"`
 
     class Meta:
         model = User
         fields = ['username', 'email', 'mobile_number', 'password', 'password2', 'user_type']
 
-    # Keep validate() method the same
+    def validate(self, data):
+        """Ensure password and confirm password match."""
+        if data['password'] != data['password2']:
+            raise serializers.ValidationError({"password2": "Passwords must match."})
+        return data
 
     def create(self, validated_data):
-        # Extract UserProfile fields
+        """Create user and user profile."""
         user_type = validated_data.pop('user_type')
         mobile_number = validated_data.pop('mobile_number')
         validated_data.pop('password2')
 
-        # Create User
+        # Create user with hashed password
         user = User.objects.create_user(**validated_data)
 
-        # Update or create UserProfile with user_type and mobile_number
+        # Create or update the user profile to avoid duplicate entries
         UserProfile.objects.update_or_create(
-            user=user,
+            user=user,  # Associate with the user
             defaults={
                 'user_type': user_type,
                 'mobile_number': mobile_number
             }
         )
+
         return user
+
 
     def to_representation(self, instance):
         """Include UserProfile data in the response."""
@@ -174,3 +184,13 @@ class AnimalReport2Serializer(serializers.ModelSerializer):
     class Meta:
         model = AnimalReport
         fields = ['id', 'user', 'description', 'location', 'timestamp', 'status', 'assigned_to', 'priority']
+
+
+
+class VolunteerLocationSerializer(serializers.ModelSerializer):
+    """Serializer for VolunteerLocation model."""
+    volunteer_name = serializers.CharField(source="volunteer.username", read_only=True)
+
+    class Meta:
+        model = VolunteerLocation
+        fields = ["volunteer", "volunteer_name", "latitude", "longitude", "updated_at"]

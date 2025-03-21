@@ -19,10 +19,10 @@ def home(request):
         return redirect("dashboard")
     return render(request, "base/coming_soon.html")
 
-
 @login_required
 def user_dashboard(request):
     user_profile = UserProfile.objects.get(user=request.user)
+    print(user_profile)
     if request.user.is_superuser:
         return redirect("/admin/")
     if user_profile.user_type != "USER":
@@ -113,9 +113,9 @@ def volunteer_dashboard(request):
 
 
 @login_required
-def admin_dashboard(request):
+def org_dashboard(request):
     user_profile = UserProfile.objects.get(user=request.user)
-    if user_profile.user_type != "ADMIN":
+    if user_profile.user_type != "ORGANIZATION":
         return redirect(f"{user_profile.user_type.lower()}_dashboard")
 
     volunteers = UserProfile.objects.all()
@@ -125,7 +125,7 @@ def admin_dashboard(request):
         "volunteer_count": UserProfile.objects.filter(user_type="VOLUNTEER").count(),
         "volunteers": UserProfile.objects.filter(user_type="VOLUNTEER"),
     }
-    return render(request, "rescue/admin_dashboard.html", context)
+    return render(request, "rescue/org_dashboard.html", context)
 
 
 @login_required
@@ -135,8 +135,8 @@ def dashboard(request):
         # Redirect based on user type
         if user_profile.user_type == "VOLUNTEER":
             return redirect("volunteer_dashboard")
-        elif user_profile.user_type == "ADMIN":
-            return redirect("admin_dashboard")
+        elif user_profile.user_type == "ORGANIZATION":
+            return redirect("org_dashboard")
         else:
             return redirect("user_dashboard")
     except UserProfile.DoesNotExist:
@@ -146,8 +146,8 @@ def dashboard(request):
 
 
 # Add these decorator functions
-def is_admin(user):
-    return hasattr(user, "userprofile") and user.userprofile.user_type == "ADMIN"
+def is_org(user):
+    return hasattr(user, "userprofile") and user.userprofile.user_type == "ORGANIZATION"
 
 
 def is_volunteer(user):
