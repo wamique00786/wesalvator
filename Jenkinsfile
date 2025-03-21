@@ -46,7 +46,7 @@ pipeline {
                 }
             }
         }
-       /*
+     
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -63,7 +63,7 @@ pipeline {
                 }
             }
         }
-        */
+        
         stage('Docker Build') {
             steps {
                 script {
@@ -107,7 +107,7 @@ pipeline {
                 }
             }
         }
-        /*
+       
         stage('Send Trivy and SonarQube Reports to Slack') {  
             steps {
                 script {
@@ -120,8 +120,8 @@ pipeline {
                 }
             }
         }
-        */
-
+        
+     
         stage('UAT Deployment') {
             steps {
                 script {
