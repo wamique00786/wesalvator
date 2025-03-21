@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.http import JsonResponse
 from django.conf import settings
 from .models import JobOpening
+import re
 
 def career_view(request):
     jobs = JobOpening.objects.all()
@@ -38,3 +40,27 @@ def contact_us(request):
 
 def about(request):
     return render(request, 'base/about.html')
+
+def send_notification_email(request):
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+
+        # Validate Email Format
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return JsonResponse({"error": "Invalid email address!"}, status=400)
+
+        try:
+            # Send Email
+            send_mail(
+                "Wesalvator - Stay Notified!",
+                "Thank you for subscribing! We will notify you when we launch.",
+                settings.DEFAULT_FROM_EMAIL,  # Change to your SMTP configured sender email
+                [email],
+                fail_silently=False,
+            )
+            return JsonResponse({"success": "Notification email sent successfully!"})
+
+        except Exception as e:
+            return JsonResponse({"error": f"Error sending email: {str(e)}"}, status=500)
+
+    return JsonResponse({"error": "Invalid request method!"}, status=400)
