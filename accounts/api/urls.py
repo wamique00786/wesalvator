@@ -13,6 +13,7 @@ urlpatterns =[
     path('organizations/', views.OrgListView.as_view()),
     path('volunteers/nearby/', views.NearbyVolunteersView.as_view(), name='nearby_volunteers'),
     path('volunteers/all/', views.AllVolunteersView.as_view(), name='all_volunteers'),
+    path('volunteers/active/', views.ActiveVolunteersView.as_view(), name='all_volunteers'),
     path('volunteer/location/<int:volunteer_id>/', views.get_volunteer_location, name='get_volunteer_location'),
 
 ]

@@ -18,9 +18,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.authtoken.models import Token
+from django.utils.timezone import now
+from datetime import timedelta
 
 from ..models import UserProfile
-from rescue.models import AnimalReport, AnimalReportImage, RescueTask
+from rescue.models import AnimalReport, AnimalReportImage, RescueTask, VolunteerLocation
 from ..serializers import (
     UserProfileSerializer,
     AnimalReportSerializer,
@@ -28,7 +30,8 @@ from ..serializers import (
     AnimalReportListSerializer,
     PasswordResetRequestSerializer,
     LoginSerializer,
-    SignUpSerializer
+    SignUpSerializer,
+    VolunteerLocationSerializer
 )
 from .. import send_email as sm
 
@@ -157,6 +160,15 @@ class AllVolunteersView(generics.ListAPIView):
 
     def get_queryset(self):
         return UserProfile.objects.filter(user_type="VOLUNTEER")
+    
+class ActiveVolunteersView(generics.ListAPIView):
+    """API view to list active volunteers based on recent location updates."""
+    serializer_class = VolunteerLocationSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        five_minutes_ago = now() - timedelta(minutes=5)
+        return VolunteerLocation.objects.filter(updated_at__gte=five_minutes_ago)
 
 class NearbyVolunteersView(generics.ListAPIView):
     serializer_class = UserProfileSerializer

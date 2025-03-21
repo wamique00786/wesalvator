@@ -6,6 +6,8 @@ from rescue.models import AnimalReport, AnimalReportImage
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.gis.geos import Point
 from phonenumber_field.serializerfields import PhoneNumberField
+from rescue.models import VolunteerLocation
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -182,3 +184,13 @@ class AnimalReport2Serializer(serializers.ModelSerializer):
     class Meta:
         model = AnimalReport
         fields = ['id', 'user', 'description', 'location', 'timestamp', 'status', 'assigned_to', 'priority']
+
+
+
+class VolunteerLocationSerializer(serializers.ModelSerializer):
+    """Serializer for VolunteerLocation model."""
+    volunteer_name = serializers.CharField(source="volunteer.username", read_only=True)
+
+    class Meta:
+        model = VolunteerLocation
+        fields = ["volunteer", "volunteer_name", "latitude", "longitude", "updated_at"]

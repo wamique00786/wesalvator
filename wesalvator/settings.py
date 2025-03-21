@@ -27,10 +27,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1']
+ALLOWED_HOSTS = ['wesalvator.com', 'www.wesalvator.com', '127.0.0.1', 'localhost']
 
 # Application definition
 INSTALLED_APPS = [
+    "channels",
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -93,9 +95,26 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "wesalvator.wsgi.application"
+# WSGI_APPLICATION = "wesalvator.wsgi.application"
+ASGI_APPLICATION = "wesalvator.asgi.application"
 
 # Database
+
+'''DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.mysql',
+        'NAME': os.getenv("DATABASE_NAME"),
+        'USER': os.getenv("DATABASE_USER"),
+        'PASSWORD': os.getenv("DATABASE_PASSWORD"),
+        'HOST': os.getenv("DATABASE_HOST"),
+        'PORT': os.getenv("DATABASE_PORT"),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        }
+    }
+}'''
+
 DATABASES = {
     'default': {  # PostgreSQL with PostGIS (for GIS data)
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -158,17 +177,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-# Firebase Configuration
-FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
-FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN")
-FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
-FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET")
-FIREBASE_MESSAGING_SENDER_ID = os.getenv("FIREBASE_MESSAGING_SENDER_ID")
-FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID")
-
-#GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
+GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
 #GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
-GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
+#GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
