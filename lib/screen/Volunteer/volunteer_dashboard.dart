@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:wesalvator/views/navbar.dart';
+import 'package:wesalvator/nav_section/navbar_main.dart';
 import 'package:wesalvator/widgets/task_card.dart';
 
 class VolunteerDashboard extends StatefulWidget {

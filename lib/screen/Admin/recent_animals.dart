@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
@@ -61,37 +59,6 @@ class _RecentAnimalsScreenState extends State<RecentAnimalsScreen> {
       setState(() => isLoading = false);
     }
   }
-
-  Future<void> getAddressFromCurrentLocation() async {
-    try {
-      // Get the current position
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
-      );
-
-      print("Latitude: ${position.latitude}, Longitude: ${position.longitude}");
-
-      // Convert to address using geocoding
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        String address =
-            "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
-
-        print("Address: $address");
-      }
-    } catch (e) {
-      print("Error: $e");
-    }
-  }
-
-  // Future<String> getAddress(){
-
-  // }
 
   @override
   Widget build(BuildContext context) {

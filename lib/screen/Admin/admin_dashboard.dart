@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:wesalvator/Admin/recent_animals.dart';
-import 'package:wesalvator/Admin/active_volunteer.dart';
-import 'package:wesalvator/views/navbar.dart';
+import 'package:wesalvator/screen/Admin/recent_animals.dart';
+import 'package:wesalvator/screen/Admin/active_volunteer.dart';
+import 'package:wesalvator/nav_section/navbar_main.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -23,15 +23,18 @@ class AdminDashboardState extends State<AdminDashboard> {
         centerTitle: true,
         title: Text(
           'Admin Dashboard',
-          style: theme.textTheme.headlineSmall!
-              .copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.headlineSmall!.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.menu, color: colorScheme.primary),
             onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const NavBar()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NavBar()),
+              );
             },
           ),
         ],
@@ -56,15 +59,17 @@ class AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           "Overview",
-          style:
-              theme.textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleLarge!.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 8),
         Divider(
-            color: theme.colorScheme.primary,
-            thickness: 2,
-            indent: 50,
-            endIndent: 50),
+          color: theme.colorScheme.primary,
+          thickness: 2,
+          indent: 50,
+          endIndent: 50,
+        ),
       ],
     );
   }
@@ -114,8 +119,9 @@ class AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 10),
             Text(
               title,
-              style: theme.textTheme.bodyMedium!
-                  .copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -137,21 +143,29 @@ class AdminDashboardState extends State<AdminDashboard> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _buildButton(context, 'Recent Animals', () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => RecentAnimalsScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => RecentAnimalsScreen()),
+          );
         }, theme),
         _buildButton(context, 'Active Volunteers', () {
           Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const ActiveVolunteersScreen()));
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ActiveVolunteersScreen(),
+            ),
+          );
         }, theme),
       ],
     );
   }
 
   Widget _buildButton(
-      BuildContext context, String label, VoidCallback onTap, ThemeData theme) {
+    BuildContext context,
+    String label,
+    VoidCallback onTap,
+    ThemeData theme,
+  ) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: theme.colorScheme.primary,

@@ -55,6 +55,7 @@ dependencies:
   permission_handler: ^11.4.0
   flutter_local_notifications: ^18.0.1
   geocoding: ^3.0.0
+  mailer: ^6.4.1
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,9 @@ flutter:
     - assets/backgroundimg.jpg
     - assets/cat.jpg
     - assets/ws_logo.png
+    - assets/user.png
+    - assets/volunteer.png
+    - assets/admin.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
