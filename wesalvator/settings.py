@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-import firebase_admin
+'''import firebase_admin
 from firebase_admin import credentials
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ if os.path.exists(FIREBASE_CONFIG_PATH):
     cred = credentials.Certificate(FIREBASE_CONFIG_PATH)
     firebase_admin.initialize_app(cred)
 else:
-    raise FileNotFoundError(f"Firebase config file not found: {FIREBASE_CONFIG_PATH}")
+    raise FileNotFoundError(f"Firebase config file not found: {FIREBASE_CONFIG_PATH}")'''
 
 # Load environment variables from .env file
 load_dotenv()
@@ -162,14 +162,14 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Firebase configuration
-FIREBASE_CONFIG = {
+'''FIREBASE_CONFIG = {
     "apiKey": os.getenv("FIREBASE_API_KEY"),
     "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
     "projectId": os.getenv("FIREBASE_PROJECT_ID"),
     "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
     "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
     "appId": os.getenv("FIREBASE_APP_ID"),
-}
+}'''
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
