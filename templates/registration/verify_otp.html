@@ -10,15 +10,22 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label class="form-label">Email OTP</label>
-                        <input type="text" name="email_otp" class="form-control" required>
+                        <label class="email-otp">Email OTP</label>
+                        <input type="text" name="email_otp" class="form-control" required id="email_otp">
                     </div>
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label class="form-label">Mobile OTP</label>
                         <input type="text" name="mobile_otp" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Verify</button>
+                    </div> -->
+                    <button type="submit" class="btn btn-primary">Verify OTP</button>
                 </form>
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
         </div>
     </div>

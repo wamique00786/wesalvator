@@ -21,15 +21,24 @@ function getCookie(name) {
 
 // Camera handling
 startButton.addEventListener('click', async () => {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        camera.srcObject = stream;
-        camera.style.display = 'block'; // Show the camera
-        startButton.style.display = 'none'; // Hide the start button
-        captureButton.style.display = 'block'; // Show the capture button
-    } catch (err) {
-        console.error('Error accessing camera:', err);
-        alert('Could not access camera');
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent); // Check if the user is on a mobile device
+
+    if (isMobile) {
+        // Open back camera on mobile devices
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Use back camera
+            camera.srcObject = stream;
+            camera.style.display = 'block'; // Show the camera
+            startButton.style.display = 'none'; // Hide the start button
+            captureButton.style.display = 'block'; // Show the capture button
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Could not access camera');
+        }
+    } else {
+        // Show QR code pop-up on desktop/laptop
+        alert('Please scan the QR code to download the app.');
+        window.open('/static/images/qr-code.png', '_blank'); // Open the QR code image
     }
 });
 
@@ -779,3 +788,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 10000); // Update every 10 seconds
     }, 2000); // Wait 2 seconds for initialization
 });
+
+function renderMarkers() {
+    // Assuming you have a function to get user data
+    fetch('/api/get-users/')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(user => {
+                if (user.user_type === 'ADMIN' && user.location) {
+                    const [lng, lat] = user.location.coordinates;
+                    L.marker([lat, lng]).addTo(map).bindPopup(user.username);
+                }
+                // Handle other user types...
+            });
+        });
+}

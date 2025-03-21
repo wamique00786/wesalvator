@@ -16,6 +16,7 @@ from django_otp.plugins.otp_email.models import EmailDevice
 from .send_email import send_sms_to_user
 from django.http import JsonResponse
 import json
+from .firebase_auth import verify_firebase_token
 
 def get_admins(request):
     if request.method == 'GET':
@@ -28,7 +29,7 @@ def signup(request):
         if form.is_valid():
             # Generate OTPs
             email_otp = str(random.randint(100000, 999999))
-            mobile_otp = str(random.randint(100000, 999999))
+            #mobile_otp = str(random.randint(100000, 999999))
 
             # Store data in session
             request.session['signup_data'] = {
@@ -41,36 +42,48 @@ def signup(request):
                 'location': form.cleaned_data['location'],
             }
             request.session['email_otp'] = email_otp
-            request.session['mobile_otp'] = mobile_otp
+            #request.session['mobile_otp'] = mobile_otp
             request.session.set_expiry(300)  # 5 minutes expiration
 
-            # Send email OTP using django-otp
+            # Create and save the user instance
             user = User(username=form.cleaned_data['username'], email=form.cleaned_data['email'])
+            user.set_password(form.cleaned_data['password1'])  # Set the password
+            user.save()
+
+            # Send email OTP using django-otp
             device = EmailDevice.objects.create(user=user, name='email_otp_device')
             device.generate_challenge()  # This sends the OTP via email
 
-            send_sms_to_user(form.cleaned_data['mobile_number'], mobile_otp)
+            #send_sms_to_user(form.cleaned_data['mobile_number'], mobile_otp)
 
             return redirect('verify_otp')
     else:
         form = SignUpForm()
-    return render(request, 'registration/signup.html', {'form': form})
+    return render(request, 'registration/signup.html', {
+        'form': form,
+        'firebase_api_key': settings.FIREBASE_API_KEY,
+        'firebase_auth_domain': settings.FIREBASE_AUTH_DOMAIN,
+        'firebase_project_id': settings.FIREBASE_PROJECT_ID,
+        'firebase_storage_bucket': settings.FIREBASE_STORAGE_BUCKET,
+        'firebase_messaging_sender_id': settings.FIREBASE_MESSAGING_SENDER_ID,
+        'firebase_app_id': settings.FIREBASE_APP_ID,
+    })
 
 def verify_otp(request):
     if request.method == 'POST':
         entered_email_otp = request.POST.get('email_otp')
-        entered_mobile_otp = request.POST.get('mobile_otp')
+        #entered_mobile_otp = request.POST.get('mobile_otp')
         
         # Retrieve session data
         signup_data = request.session.get('signup_data')
         stored_email_otp = request.session.get('email_otp')
-        stored_mobile_otp = request.session.get('mobile_otp')
+        #stored_mobile_otp = request.session.get('mobile_otp')
         
-        if not (signup_data and stored_email_otp and stored_mobile_otp):
+        if not (signup_data and stored_email_otp and stored_email_otp):
             messages.error(request, 'Session expired. Please register again.')
             return redirect('signup')
         
-        if entered_email_otp == stored_email_otp and entered_mobile_otp == stored_mobile_otp:
+        if entered_email_otp == stored_email_otp: #and entered_mobile_otp == stored_mobile_otp
             # Create user
             user = User.objects.create_user(
                 username=signup_data['username'],
@@ -86,7 +99,7 @@ def verify_otp(request):
             # Clear session
             del request.session['signup_data']
             del request.session['email_otp']
-            del request.session['mobile_otp']
+            #del request.session['mobile_otp']
             messages.success(request, 'Account verified! Please login.')
             return redirect('login')
         else:
@@ -129,9 +142,23 @@ def get_sms_otp(request):
         request.session.set_expiry(300)  # 5 minutes
         
         # Send SMS (use your SMS sending logic)
-        send_sms_to_user(mobile, otp)
+        #send_sms_to_user(mobile, otp)
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error'}, status=400)
+
+@csrf_exempt
+def verify_firebase_token_view(request):
+    if request.method == 'POST':
+        id_token = request.POST.get('id_token')
+        decoded_token = verify_firebase_token(id_token)
+        if decoded_token:
+            # Get user info from decoded_token
+            uid = decoded_token['uid']
+            # Link the verified phone number to the user account
+            # You can create or update the user profile here
+            return JsonResponse({'status': 'success', 'uid': uid})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
 
 def custom_login(request):
     if request.user.is_authenticated:
@@ -191,7 +218,7 @@ def password_reset_request(request):
                     context = {
                         "email": user.email,
                         "domain": request.get_host(),
-                        "site_name": "Wesalvatore",
+                        "site_name": "Wesalvator",
                         "uid": urlsafe_base64_encode(force_bytes(user.pk)),
                         "token": default_token_generator.make_token(user),
                         "protocol": "http",

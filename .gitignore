@@ -18,6 +18,9 @@ docs/
 .env
 postgres/
 
-#ignore my files..
+#Ignore my files..
 py_client/
 rough.py
+
+#Ignore firebase config
+firebase_config.json

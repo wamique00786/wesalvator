@@ -21,15 +21,24 @@ function getCookie(name) {
 
 // Camera handling
 startButton.addEventListener('click', async () => {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        camera.srcObject = stream;
-        camera.style.display = 'block'; // Show the camera
-        startButton.style.display = 'none'; // Hide the start button
-        captureButton.style.display = 'block'; // Show the capture button
-    } catch (err) {
-        console.error('Error accessing camera:', err);
-        alert('Could not access camera');
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent); // Check if the user is on a mobile device
+
+    if (isMobile) {
+        // Open back camera on mobile devices
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Use back camera
+            camera.srcObject = stream;
+            camera.style.display = 'block'; // Show the camera
+            startButton.style.display = 'none'; // Hide the start button
+            captureButton.style.display = 'block'; // Show the capture button
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Could not access camera');
+        }
+    } else {
+        // Show QR code pop-up on desktop/laptop
+        alert('Please scan the QR code to download the app.');
+        window.open('/static/images/qr-code.png', '_blank'); // Open the QR code image
     }
 });
 

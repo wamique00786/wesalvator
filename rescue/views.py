@@ -17,8 +17,7 @@ User = get_user_model()
 def home(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
-    return render(request, "landing_page/landing_page.html")
-
+    return render(request, "base/coming_soon.html")
 
 @login_required
 def user_dashboard(request):

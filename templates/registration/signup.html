@@ -73,10 +73,10 @@
                         <label for="email" class="form-label">Email address</label>
                         <div class="input-group">
                             <input type="email" name="email" class="form-control" required id="email">
-                            <button type="button" class="btn btn-outline-secondary" onclick="sendEmailOTP()" 
+                            <!-- <button type="button" class="btn btn-outline-secondary" onclick="sendEmailOTP()" 
                                     style="border-radius: 0 5px 5px 0">
                                 Get OTP
-                            </button>
+                            </button> -->
                         </div>
                         <div class="mt-2">
                             <input type="text" name="email_otp" class="form-control" placeholder="Enter Email OTP" 
@@ -89,21 +89,25 @@
                         <label for="mobile_number" class="form-label">Mobile Number</label>
                         <div class="input-group">
                             <input id="mobile_number" type="tel" name="mobile_number" class="form-control" required>
-                            <button type="button" class="btn btn-outline-secondary" onclick="sendSmsOTP()" 
+                            <!-- <button type="button" class="btn btn-outline-secondary" onclick="sendSmsOTP()" 
                                     style="border-radius: 0 5px 5px 0">
                                 Get OTP
-                            </button>
+                            </button> -->
                         </div>
                         <div class="mt-2">
-                            <input type="text" name="mobile_otp" class="form-control" placeholder="Enter SMS OTP" id="smsOtpInput" style="display: none;">
+                            <!-- <input type="text" name="mobile_otp" class="form-control" placeholder="Enter SMS OTP" id="smsOtpInput" style="display: none;"> -->
                         </div>
                         <input type="hidden" id="country_code" name="country_code">
+                        <!-- <button type="button" class="btn btn-primary" onclick="verifyOtp()">Verify OTP</button> -->
                         {% if form.mobile_number.errors %}
                             <div class="text-danger">
                                 {{ form.mobile_number.errors }}
                             </div>
                         {% endif %}
                     </div>
+
+                    <!-- ReCAPTCHA Container -->
+                    <div id="recaptcha-container"></div>
 
                     <!-- Password field -->
                     <div class="mb-3 text-start">
@@ -149,6 +153,148 @@
 <script src="{% static 'js/utils.js' %}"></script>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var input = document.querySelector("#mobile_number");
+        var countryCodeInput = document.querySelector("#country_code");
+
+        if (input && countryCodeInput) {
+            var iti = window.intlTelInput(input, {
+                initialCountry: "IN",  // Default country: India
+                separateDialCode: true,  // Show the dial code separately
+                preferredCountries: ["IN", "US", "GB"],  // Preferred countries list
+                nationalMode: true, // Ensure input box only contains the local number (not +91)
+                autoPlaceholder: "off",  // Prevents showing unwanted placeholders
+                formatOnDisplay: false, // Ensures clean user input
+                utilsScript: "{% static 'js/utils.js' %}"  // Ensure utils.js is loaded properly
+            });
+
+            // Set initial country code
+            countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
+
+            // Update country code when user changes country
+            input.addEventListener('countrychange', function() {
+                countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
+            });
+
+            // Validate on form submission
+            document.querySelector("form").addEventListener("submit", function (event) {
+                var nationalNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL).trim();
+                var isValid = iti.isValidNumber();
+
+                if (!isValid) {
+                    event.preventDefault();
+                    alert("Please enter a valid phone number.");
+                    return false;
+                }
+
+                // Optional: Uncomment if server expects full number in mobile_number
+                input.value = nationalNumber;
+            });
+        }
+    });
+</script>
+
+<script type="module">
+
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "{{ firebase_api_key }}",
+        authDomain: "{{ firebase_auth_domain }}",
+        projectId: "{{ firebase_project_id }}",
+        storageBucket: "{{ firebase_storage_bucket }}",
+        messagingSenderId: "{{ firebase_messaging_sender_id }}",
+        appId: "{{ firebase_app_id }}"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.firebaseAuth = auth;
+
+    // ✅ Setup reCAPTCHA
+    function setupRecaptcha() {
+        if (!window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', {
+                size: 'invisible'
+            }, auth);
+        }
+    }
+
+    // Commenting out the sendSmsOTP function
+    // function sendSmsOTP() {
+    //     setupRecaptcha();
+
+    //     const phoneInput = document.getElementById("mobile_number");
+    //     const iti = window.intlTelInputGlobals.getInstance(phoneInput);
+
+    //     if (!iti.isValidNumber()) {
+    //         alert("Please enter a valid phone number.");
+    //         return;
+    //     }
+
+    //     const fullNumber = iti.getNumber(); // Get full number in E.164 format
+    //     console.log("Formatted Phone Number:", fullNumber);
+
+    //     signInWithPhoneNumber(auth, fullNumber, window.recaptchaVerifier)
+    //         .then((confirmationResult) => {
+    //             window.confirmationResult = confirmationResult;
+    //             alert("OTP sent successfully!");
+    //             document.getElementById('smsOtpInput').style.display = 'block';
+    //         })
+    //         .catch((error) => {
+    //             alert("Error sending OTP: " + error.message);
+    //         });
+    // }
+
+    // Commenting out the verifyOtp function
+    // function verifyOtp() {
+    //     const otp = document.getElementById("smsOtpInput").value;
+    //     if (!window.confirmationResult) {
+    //         alert("Please request an OTP first.");
+    //         return;
+    //     }
+
+    //     window.confirmationResult.confirm(otp)
+    //         .then((result) => {
+    //             alert("Phone number verified successfully!");
+    //         })
+    //         .catch((error) => {
+    //             alert("Error verifying OTP: " + error.message);
+    //         });
+    // }
+
+    function sendEmailOTP() {
+        const email = document.getElementById("email").value;
+        if (!email) {
+            alert("Please enter a valid email.");
+            return;
+        }
+
+        fetch('/get-email-otp/', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({ email: email })
+        }).then(response => {
+            if (response.ok) {
+                alert("OTP sent to email!");
+                document.getElementById('emailOtpInput').style.display = 'block';
+            } else {
+                alert("Error sending OTP");
+            }
+        });
+    }
+
+    //window.sendSmsOTP = sendSmsOTP;
+    //window.verifyOtp = verifyOtp;
+    window.sendEmailOTP = sendEmailOTP;
+
     document.getElementById('user_type').addEventListener('change', function() {
         const userType = this.value;
         const adminSelect = document.getElementById('admin_name');
@@ -199,112 +345,5 @@
             }
         }
     });
-    function sendEmailOTP() {
-        const email = document.getElementById('email').value;
-        if (!validateEmail(email)) {
-            alert('Please enter a valid email address');
-            return;
-        }
-
-        // Disable button for 60 seconds
-        const btn = event.target;
-        btn.disabled = true;
-        setTimeout(() => btn.disabled = false, 60000);
-
-        // Show OTP input
-        document.getElementById('emailOtpInput').style.display = 'block';
-
-        // Send AJAX request
-        fetch('/get-email-otp/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({email: email})
-        }).then(response => {
-            if (response.ok) alert('OTP sent to email!');
-            else alert('Error sending OTP');
-        });
-    }
-
-    function sendSmsOTP() {
-        const phoneInput = document.getElementById('mobile_number');
-        const countryCode = document.getElementById('country_code').value;
-        const fullNumber = countryCode + phoneInput.value;
-
-        // Get intl-tel-input instance
-        const iti = window.intlTelInputGlobals.getInstance(phoneInput);
-
-        if (!iti.isValidNumber()) {
-            alert('Please enter a valid phone number');
-            return;
-        }
-
-        // Disable button for 60 seconds
-        const btn = event.target;
-        btn.disabled = true;
-        setTimeout(() => btn.disabled = false, 60000);
-
-        // Show OTP input
-        document.getElementById('smsOtpInput').style.display = 'block';
-
-        // Send AJAX request
-        fetch('/get-sms-otp/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({mobile: iti.getNumber()})
-        }).then(response => {
-            if (response.ok) alert('OTP sent to mobile!');
-            else alert('Error sending OTP');
-        });
-    }
-
-    // Basic email validation
-    function validateEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-    document.addEventListener("DOMContentLoaded", function () {
-        var input = document.querySelector("#mobile_number");
-        var countryCodeInput = document.querySelector("#country_code");
-
-        if (input && countryCodeInput) {
-            var iti = window.intlTelInput(input, {
-                initialCountry: "IN",  // Default country: India
-                separateDialCode: true,  // Show the dial code separately
-                preferredCountries: ["IN", "US", "GB"],  // Preferred countries list
-                nationalMode: true, // Ensure input box only contains the local number (not +91)
-                autoPlaceholder: "off",  // Prevents showing unwanted placeholders
-                formatOnDisplay: false, // Ensures clean user input
-                utilsScript: "{% static 'js/utils.js' %}"  // Ensure utils.js is loaded properly
-            });
-
-            // Set initial country code
-        countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
-
-        // Update country code when user changes country
-        input.addEventListener('countrychange', function() {
-            countryCodeInput.value = '+' + iti.getSelectedCountryData().dialCode;
-        });
-
-        // Validate on form submission
-        document.querySelector("form").addEventListener("submit", function (event) {
-            var nationalNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL).trim();
-            var isValid = iti.isValidNumber();
-
-            if (!isValid) {
-                event.preventDefault();
-                alert("Please enter a valid phone number.");
-                return false;
-            }
-
-            // Optional: Uncomment if server expects full number in mobile_number
-            input.value = nationalNumber;
-        });
-    }
-});
 </script>
 {% endblock %}

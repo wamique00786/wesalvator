@@ -1,9 +1,23 @@
 from django.core.mail import send_mail
 from django.conf import settings
+import requests
 
 def send_sms_to_user(mobile_number, otp):
-    # Mock implementation (prints to console)
-    print(f"[DEV] Mock SMS sent to {mobile_number}: OTP is {otp}")
+       """
+       Sends an SMS to the specified mobile number with the given OTP.
+       This is a placeholder function. Implement SMS sending logic here.
+       """
+       # Example implementation using a hypothetical SMS API
+       url = "https://api.smsprovider.com/send"
+       payload = {
+           "to": mobile_number,
+           "message": f"Your OTP is: {otp}"
+       }
+       headers = {
+           "Authorization": f"Bearer {settings.SMS_API_KEY}"  # Assuming you have an API key in your settings
+       }
+       response = requests.post(url, json=payload, headers=headers)
+       return response.status_code == 200
 
 def send_mail_to_volunteer(volunteer_profile, report):
     """
