@@ -161,6 +161,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Firebase configuration
+FIREBASE_CONFIG = {
+    "apiKey": os.getenv("FIREBASE_API_KEY"),
+    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+    "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+    "appId": os.getenv("FIREBASE_APP_ID"),
+}
+
+# Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -171,9 +182,9 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
-#GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
+GDAL_LIBRARY_PATH = r"C:\OSGeo4W\bin\gdal309.dll"  # Verify this path
 #GDAL_LIBRARY_PATH = "/usr/lib/libgdal.so"
-GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
+#GDAL_LIBRARY_PATH = "/usr/lib/aarch64-linux-gnu/libgdal.so"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
