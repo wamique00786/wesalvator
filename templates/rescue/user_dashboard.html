@@ -7,13 +7,87 @@
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+
+   <style>
+      /* Overlay (Dim Background) */
+      #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        /* Popup Window */
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+        }
+        #popup h2{
+            font-size: 60px;
+            font-weight: 500;
+            padding: 20px 40px;
+        }
+
+        /* Close Button */
+        #close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: black;
+        }
+
+        /* Button Styles */
+        .btn-container a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: green;
+            color: gray;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+   </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4">    
+
+    <section id="mypopup">
+        <!-- Overlay -->
+        <div id="overlay"></div>
+
+        <!-- Popup Window -->
+        <div id="popup">
+            <button id="close-btn">❌</button> <!-- Close Button -->
+            <h2>Download Our App</h2>
+            <p>Get the best experience by using our mobile app.</p>
+            <div class="btn-container">
+                <a id="download-btn">Download App</a>
+            </div>
+        </div>  
+    </section>
+
+  
 
     <!-- Report Animal Section -->
-    <div class="card mb-4">
+    <div class="card mb-4" id="animal_report_container">
         <div class="card-header">
             <h4>Report Animal</h4>
         </div>
@@ -74,7 +148,36 @@
 
 {% block additional_js %}
    <!-- Add Bootstrap JS -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" defer></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" defer></script>
    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
    <script src="{% static 'js/user_dashboard.js' %}" defer></script>
+   <script>
+     function isDesktop() {
+            return !/Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+        }
+
+        function showPopup() {
+            if (isDesktop()) {  
+                document.getElementById("popup").style.display = "block";
+                document.getElementById("overlay").style.display = "block";
+            }
+        }
+
+        function closePopup() {
+            document.getElementById("popup").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        // Handle Download Button Click
+        document.getElementById("download-btn").addEventListener("click", function() {
+            window.location.href = "https://yourappdownloadlink.com"; 
+            closePopup();
+        });
+
+        // Handle Close Button Click
+        document.getElementById("close-btn").addEventListener("click", closePopup);
+
+        // Show popup on page load
+        window.addEventListener("load", showPopup);
+    </script>
 {% endblock %}
